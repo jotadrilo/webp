@@ -1,11 +1,27 @@
-package webp
+// Package encode is the encoding half of github.com/jotadrilo/webp: Google's libwebp encoder in
+// pure Go. Import it instead of the webp package when a program only encodes, so that the
+// decoder is not linked in (and the "webp" image format is not registered).
+package encode
 
 import (
 	"image"
 	"image/color"
 	"image/draw"
 	"io"
+
+	"github.com/jotadrilo/webp/internal/werr"
 )
+
+// The errors Encode returns (see the webp package; the values are the same).
+var (
+	ErrInvalidImage   = werr.ErrInvalidImage
+	ErrInvalidOptions = werr.ErrInvalidOptions
+	ErrOutOfMemory    = werr.ErrOutOfMemory
+	ErrInternal       = werr.ErrInternal
+)
+
+// Error is the error type of this package.
+type Error = werr.Error
 
 // MaxDimension is the largest width or height a WebP image can have.
 const MaxDimension = 16383
@@ -40,18 +56,18 @@ func Encode(w io.Writer, m image.Image, o *Options) error {
 		o = defaultOptions
 	}
 	if !(o.Quality >= 0 && o.Quality <= 100) || o.Method < 0 || o.Method > 6 {
-		return &Error{Op: "encode", Err: ErrInvalidOptions}
+		return &werr.Error{Op: "encode", Err: ErrInvalidOptions}
 	}
 	b := m.Bounds()
 	wd, ht := b.Dx(), b.Dy()
 	if wd <= 0 || ht <= 0 || wd > MaxDimension || ht > MaxDimension {
-		return &Error{Op: "encode", Err: ErrInvalidImage}
+		return &werr.Error{Op: "encode", Err: ErrInvalidImage}
 	}
-	return call("encode", func(i *instance) error {
+	return call(func(i *instance) error {
 		stride := wd * 4
 		p := i.m.Xmalloc(int32(stride * ht))
 		if p == 0 {
-			return &Error{Op: "encode", Err: ErrOutOfMemory}
+			return &werr.Error{Op: "encode", Err: ErrOutOfMemory}
 		}
 		opaque := importPixels(i.m.Mem()[uint32(p):uint32(p)+uint32(stride*ht)], m, wd, ht)
 		i.w = w
@@ -61,7 +77,7 @@ func Encode(w io.Writer, m image.Image, o *Options) error {
 			return i.werr
 		}
 		if code != 0 {
-			return encodeError(code)
+			return werr.Encode(code)
 		}
 		return nil
 	})

@@ -1,4 +1,7 @@
-package webp
+// Package decode is the decoding half of github.com/jotadrilo/webp: Google's libwebp decoder
+// in pure Go. Import it instead of the webp package when a program only decodes, so that the
+// encoder is not linked in. Importing it registers the "webp" format with the image package.
+package decode
 
 import (
 	"encoding/binary"
@@ -6,7 +9,55 @@ import (
 	"image"
 	"image/color"
 	"io"
+
+	"github.com/jotadrilo/webp/internal/gen/dec"
+	"github.com/jotadrilo/webp/internal/pool"
+	"github.com/jotadrilo/webp/internal/werr"
 )
+
+// The errors Decode and DecodeConfig return (see the webp package; the values are the same).
+var (
+	ErrFormat      = werr.ErrFormat
+	ErrTruncated   = werr.ErrTruncated
+	ErrUnsupported = werr.ErrUnsupported
+	ErrOutOfMemory = werr.ErrOutOfMemory
+	ErrInternal    = werr.ErrInternal
+)
+
+// Error is the error type of this package.
+type Error = werr.Error
+
+// An instance is one libwebp decoder module.
+type instance struct{ m *dec.Module }
+
+var instances = pool.New(func() *instance {
+	i := new(instance)
+	i.m = dec.New(i)
+	i.m.X_initialize()
+	return i
+}, func(i *instance) int { return len(i.m.Mem()) })
+
+// Xrandom_get is the WASI import wasi-libc uses to seed its stack-protector canary. The
+// module's memory is a bounds-checked Go slice, so the canary protects nothing here; a fixed
+// value keeps every instance deterministic.
+func (i *instance) Xrandom_get(p, n int32) int32 {
+	clear(i.m.Mem()[uint32(p) : uint32(p)+uint32(n)])
+	return 0
+}
+
+// call runs f on a pooled instance. A panic inside the module (a trap) discards the instance
+// and becomes ErrInternal, so bad input can never crash the caller.
+func call(op string, f func(*instance) error) (err error) {
+	i := instances.Get()
+	defer func() {
+		if r := recover(); r != nil {
+			err = &werr.Error{Op: op, Err: werr.ErrInternal}
+			return
+		}
+		instances.Put(i)
+	}()
+	return f(i)
+}
 
 func init() {
 	image.RegisterFormat("webp", "RIFF????WEBPVP8", Decode, DecodeConfig)
@@ -38,17 +89,17 @@ func Decode(r io.Reader) (image.Image, error) {
 			return err
 		}
 		if f.anim {
-			return &Error{Op: "decode", Code: statusUnsupportedFeature, Err: ErrUnsupported}
+			return &werr.Error{Op: "decode", Code: werr.StatusUnsupportedFeature, Err: ErrUnsupported}
 		}
 		stride := f.width * 4
 		size := stride * f.height
 		q := i.m.Xmalloc(int32(size))
 		if q == 0 {
-			return &Error{Op: "decode", Code: statusOutOfMemory, Err: ErrOutOfMemory}
+			return &werr.Error{Op: "decode", Code: werr.StatusOutOfMemory, Err: ErrOutOfMemory}
 		}
 		defer i.m.Xfree(q)
-		if st := i.m.Xwp_decode(p, n, q, int32(size), int32(stride)); st != statusOK {
-			return decodeError("decode", st)
+		if st := i.m.Xwp_decode(p, n, q, int32(size), int32(stride)); st != werr.StatusOK {
+			return werr.Decode("decode", st)
 		}
 		pix := make([]byte, size)
 		copy(pix, i.m.Mem()[uint32(q):uint32(q)+uint32(size)])
@@ -79,7 +130,7 @@ func DecodeConfig(r io.Reader) (image.Config, error) {
 			buf = buf[:len(buf)+k]
 			p := i.m.Xmalloc(int32(len(buf)))
 			if p == 0 {
-				return &Error{Op: "decode config", Err: ErrOutOfMemory}
+				return &werr.Error{Op: "decode config", Err: ErrOutOfMemory}
 			}
 			copy(i.m.Mem()[uint32(p):], buf)
 			f, ferr := getFeatures(i, "decode config", p, int32(len(buf)))
@@ -108,11 +159,11 @@ func DecodeConfig(r io.Reader) (image.Config, error) {
 func getFeatures(i *instance, op string, p, n int32) (features, error) {
 	o := i.m.Xmalloc(20)
 	if o == 0 {
-		return features{}, &Error{Op: op, Code: statusOutOfMemory, Err: ErrOutOfMemory}
+		return features{}, &werr.Error{Op: op, Code: werr.StatusOutOfMemory, Err: ErrOutOfMemory}
 	}
 	defer i.m.Xfree(o)
-	if st := i.m.Xwp_features(p, n, o); st != statusOK {
-		return features{}, decodeError(op, st)
+	if st := i.m.Xwp_features(p, n, o); st != werr.StatusOK {
+		return features{}, werr.Decode(op, st)
 	}
 	v := i.m.Mem()[uint32(o) : uint32(o)+20]
 	le := binary.LittleEndian
@@ -135,7 +186,7 @@ func readInto(i *instance, r io.Reader) (p, n int32, err error) {
 	k, err := io.ReadFull(r, hdr[:])
 	if err != nil {
 		if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
-			return 0, 0, &Error{Op: "decode", Code: statusNotEnoughData, Err: ErrTruncated}
+			return 0, 0, &werr.Error{Op: "decode", Code: werr.StatusNotEnoughData, Err: ErrTruncated}
 		}
 		return 0, 0, err
 	}
@@ -151,7 +202,7 @@ func readInto(i *instance, r io.Reader) (p, n int32, err error) {
 	}
 	p = i.m.Xmalloc(int32(capacity))
 	if p == 0 {
-		return 0, 0, &Error{Op: "decode", Code: statusOutOfMemory, Err: ErrOutOfMemory}
+		return 0, 0, &werr.Error{Op: "decode", Code: werr.StatusOutOfMemory, Err: ErrOutOfMemory}
 	}
 	copy(i.m.Mem()[uint32(p):], hdr[:k])
 	size := int64(k)
@@ -167,7 +218,7 @@ func readInto(i *instance, r io.Reader) (p, n int32, err error) {
 			q := i.m.Xrealloc(p, int32(next))
 			if q == 0 {
 				i.m.Xfree(p)
-				return 0, 0, &Error{Op: "decode", Code: statusOutOfMemory, Err: ErrOutOfMemory}
+				return 0, 0, &werr.Error{Op: "decode", Code: werr.StatusOutOfMemory, Err: ErrOutOfMemory}
 			}
 			p, capacity = q, next
 		}

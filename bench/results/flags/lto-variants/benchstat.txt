@@ -1,0 +1,36 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/jotadrilo/webp
+cpu: Apple M5 Pro
+                │     lto     │              ltoTail               │                ltoO2                │                ltoOs                │             ltoNoUnroll             │
+                │   sec/op    │   sec/op     vs base               │    sec/op     vs base               │   sec/op     vs base                │   sec/op     vs base                │
+Encode/m0         2.081m ± 4%   2.073m ± 2%       ~ (p=0.315 n=10)   2.184m ±  4%  +4.93% (p=0.003 n=10)   2.601m ± 1%  +25.00% (p=0.000 n=10)   2.497m ± 4%  +19.98% (p=0.001 n=10)
+Encode/m4         11.90m ± 4%   11.81m ± 2%       ~ (p=0.579 n=10)   12.54m ±  6%  +5.36% (p=0.000 n=10)   15.54m ± 3%  +30.53% (p=0.000 n=10)   15.46m ± 3%  +29.85% (p=0.000 n=10)
+Decode/lossy      1.058m ± 9%   1.048m ± 5%       ~ (p=0.631 n=10)   1.084m ± 10%       ~ (p=0.481 n=10)   1.110m ± 2%        ~ (p=0.218 n=10)   1.134m ± 9%   +7.20% (p=0.035 n=10)
+Decode/lossless   1.319m ± 1%   1.318m ± 7%       ~ (p=0.739 n=10)   1.322m ±  8%       ~ (p=0.315 n=10)   1.386m ± 7%   +5.05% (p=0.001 n=10)   1.323m ± 5%        ~ (p=0.579 n=10)
+geomean           2.425m        2.412m       -0.55%                  2.503m        +3.22%                  2.808m       +15.79%                  2.759m       +13.75%
+
+                │     lto      │                ltoTail                │                 ltoO2                  │                 ltoOs                 │              ltoNoUnroll              │
+                │     B/op     │     B/op      vs base                 │     B/op       vs base                 │     B/op      vs base                 │     B/op      vs base                 │
+Encode/m0         64.71Ki ± 0%   64.71Ki ± 0%       ~ (p=1.000 n=10)     64.71Ki ±  0%       ~ (p=1.000 n=10)     64.72Ki ± 0%  +0.02% (p=0.000 n=10)     64.72Ki ± 0%  +0.02% (p=0.000 n=10)
+Encode/m4           2.000 ± 0%     2.000 ± 0%       ~ (p=1.000 n=10) ¹     2.000 ±  0%       ~ (p=1.000 n=10) ¹     2.000 ± 0%       ~ (p=1.000 n=10) ¹     2.000 ± 0%       ~ (p=1.000 n=10) ¹
+Decode/lossy      384.1Ki ± 0%   384.1Ki ± 0%       ~ (p=0.628 n=10)     384.1Ki ±  0%       ~ (p=0.628 n=10)     384.1Ki ± 0%       ~ (p=0.628 n=10)     384.1Ki ± 0%       ~ (p=0.070 n=10)
+Decode/lossless   384.1Ki ± 0%   384.1Ki ± 0%       ~ (p=1.000 n=10) ¹   384.1Ki ± 32%       ~ (p=0.474 n=10)     384.1Ki ± 0%       ~ (p=1.000 n=10)     384.1Ki ± 0%       ~ (p=1.000 n=10)
+geomean           11.69Ki        11.69Ki       +0.00%                    11.69Ki        +0.00%                    11.69Ki       +0.00%                    11.69Ki       +0.00%
+¹ all samples are equal
+
+                │     lto      │               ltoTail               │                 ltoO2                 │                ltoOs                │             ltoNoUnroll             │
+                │  allocs/op   │ allocs/op   vs base                 │  allocs/op    vs base                 │ allocs/op   vs base                 │ allocs/op   vs base                 │
+Encode/m0         6.000 ± 0%     6.000 ± 0%       ~ (p=1.000 n=10) ¹   6.000 ±   0%       ~ (p=1.000 n=10) ¹   6.000 ± 0%       ~ (p=1.000 n=10) ¹   6.000 ± 0%       ~ (p=1.000 n=10) ¹
+Encode/m4         0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=10) ¹   0.000 ±   0%       ~ (p=1.000 n=10) ¹   0.000 ± 0%       ~ (p=1.000 n=10) ¹   0.000 ± 0%       ~ (p=1.000 n=10) ¹
+Decode/lossy      4.000 ± 0%     4.000 ± 0%       ~ (p=1.000 n=10) ¹   4.000 ±   0%       ~ (p=1.000 n=10) ¹   4.000 ± 0%       ~ (p=1.000 n=10) ¹   4.000 ± 0%       ~ (p=1.000 n=10) ¹
+Decode/lossless   4.000 ± 0%     4.000 ± 0%       ~ (p=1.000 n=10) ¹   4.000 ± 150%       ~ (p=0.474 n=10)     4.000 ± 0%       ~ (p=1.000 n=10)     4.000 ± 0%       ~ (p=1.000 n=10)
+geomean                      ²               +0.00%                ²                 +0.00%                ²               +0.00%                ²               +0.00%                ²
+¹ all samples are equal
+² summaries must be >0 to compute geomean
+
+                │     lto      │               ltoTail               │                ltoO2                 │                ltoOs                │             ltoNoUnroll             │
+                │     B/s      │     B/s       vs base               │      B/s       vs base               │     B/s       vs base               │     B/s       vs base               │
+Decode/lossy      5.603Mi ± 8%   5.655Mi ± 5%       ~ (p=0.616 n=10)   5.469Mi ± 10%       ~ (p=0.424 n=10)   5.341Mi ± 3%       ~ (p=0.210 n=10)   5.221Mi ± 8%  -6.81% (p=0.037 n=10)
+Decode/lossless   62.94Mi ± 1%   62.99Mi ± 6%       ~ (p=0.739 n=10)   62.79Mi ±  7%       ~ (p=0.315 n=10)   59.91Mi ± 7%  -4.81% (p=0.001 n=10)   62.77Mi ± 5%       ~ (p=0.579 n=10)
+geomean           18.78Mi        18.87Mi       +0.51%                  18.53Mi        -1.31%                  17.89Mi       -4.75%                  18.10Mi       -3.59%

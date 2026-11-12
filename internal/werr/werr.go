@@ -1,4 +1,6 @@
-package webp
+// Package werr holds the error values shared by the webp, webp/encode and webp/decode packages,
+// so that errors.Is works whichever package returned the error.
+package werr
 
 import (
 	"errors"
@@ -46,26 +48,27 @@ func (e *Error) Unwrap() error { return e.Err }
 
 // libwebp's VP8StatusCode.
 const (
-	statusOK = iota
-	statusOutOfMemory
-	statusInvalidParam
-	statusBitstreamError
-	statusUnsupportedFeature
-	statusSuspended
-	statusUserAbort
-	statusNotEnoughData
+	StatusOK = iota
+	StatusOutOfMemory
+	StatusInvalidParam
+	StatusBitstreamError
+	StatusUnsupportedFeature
+	StatusSuspended
+	StatusUserAbort
+	StatusNotEnoughData
 )
 
-func decodeError(op string, st int32) error {
+// Decode maps a libwebp VP8StatusCode to an *Error.
+func Decode(op string, st int32) error {
 	var err error
 	switch st {
-	case statusOutOfMemory:
+	case StatusOutOfMemory:
 		err = ErrOutOfMemory
-	case statusUnsupportedFeature:
+	case StatusUnsupportedFeature:
 		err = ErrUnsupported
-	case statusNotEnoughData:
+	case StatusNotEnoughData:
 		err = ErrTruncated
-	case statusInvalidParam:
+	case StatusInvalidParam:
 		err = ErrInternal
 	default:
 		err = ErrFormat
@@ -83,7 +86,8 @@ const (
 	encErrConfig            = 100
 )
 
-func encodeError(code int32) error {
+// Encode maps a WebPEncodingError (or a shim code) to an *Error.
+func Encode(code int32) error {
 	var err error
 	switch code {
 	case encOutOfMemory, encBitstreamOutOfMemory:

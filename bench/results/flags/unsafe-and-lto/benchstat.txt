@@ -1,0 +1,36 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/jotadrilo/webp
+cpu: Apple M5 Pro
+                │  O3-unsafe  │               O3-safe               │           O3-unsafe-lto            │
+                │   sec/op    │   sec/op     vs base                │   sec/op     vs base               │
+Encode/m0         2.227m ± 1%   2.440m ± 0%   +9.55% (p=0.000 n=10)   2.068m ± 1%  -7.15% (p=0.000 n=10)
+Encode/m4         12.93m ± 1%   15.22m ± 0%  +17.72% (p=0.000 n=10)   11.71m ± 2%  -9.38% (p=0.000 n=10)
+Decode/lossy      1.089m ± 3%   1.137m ± 1%   +4.43% (p=0.002 n=10)   1.063m ± 3%       ~ (p=0.063 n=10)
+Decode/lossless   1.375m ± 0%   1.383m ± 1%   +0.63% (p=0.009 n=10)   1.313m ± 1%  -4.50% (p=0.000 n=10)
+geomean           2.562m        2.764m        +7.90%                  2.411m       -5.88%
+
+                │  O3-unsafe   │                O3-safe                │             O3-unsafe-lto              │
+                │     B/op     │     B/op      vs base                 │     B/op      vs base                  │
+Encode/m0         72.98Ki ± 0%   72.98Ki ± 0%       ~ (p=1.000 n=10) ¹   64.71Ki ± 0%  -11.34% (p=0.000 n=10)
+Encode/m4           2.000 ± 0%     2.000 ± 0%       ~ (p=1.000 n=10) ¹     2.000 ± 0%        ~ (p=1.000 n=10) ¹
+Decode/lossy      384.1Ki ± 0%   384.1Ki ± 0%       ~ (p=1.000 n=10)     384.1Ki ± 0%        ~ (p=0.474 n=10)
+Decode/lossless   384.1Ki ± 0%   384.1Ki ± 0%       ~ (p=1.000 n=10) ¹   384.1Ki ± 0%        ~ (p=1.000 n=10) ¹
+geomean           12.04Ki        12.04Ki       +0.00%                    11.69Ki        -2.96%
+¹ all samples are equal
+
+                │   O3-unsafe   │               O3-safe                │            O3-unsafe-lto             │
+                │   allocs/op   │  allocs/op   vs base                 │ allocs/op   vs base                  │
+Encode/m0         11.000 ± 0%     11.000 ± 0%       ~ (p=1.000 n=10) ¹   6.000 ± 0%  -45.45% (p=0.000 n=10)
+Encode/m4          0.000 ± 0%      0.000 ± 0%       ~ (p=1.000 n=10) ¹   0.000 ± 0%        ~ (p=1.000 n=10) ¹
+Decode/lossy       4.000 ± 0%      4.000 ± 0%       ~ (p=1.000 n=10) ¹   4.000 ± 0%        ~ (p=1.000 n=10) ¹
+Decode/lossless    4.000 ± 0%      4.000 ± 0%       ~ (p=1.000 n=10) ¹   4.000 ± 0%        ~ (p=1.000 n=10) ¹
+geomean                       ²                +0.00%                ²               -14.06%                ²
+¹ all samples are equal
+² summaries must be >0 to compute geomean
+
+                │  O3-unsafe   │               O3-safe               │            O3-unsafe-lto            │
+                │     B/s      │     B/s       vs base               │     B/s       vs base               │
+Decode/lossy      5.441Mi ± 3%   5.212Mi ± 1%  -4.21% (p=0.001 n=10)   5.574Mi ± 2%       ~ (p=0.065 n=10)
+Decode/lossless   60.41Mi ± 0%   60.03Mi ± 1%  -0.62% (p=0.009 n=10)   63.25Mi ± 1%  +4.71% (p=0.000 n=10)
+geomean           18.13Mi        17.69Mi       -2.43%                  18.78Mi       +3.58%

@@ -7,6 +7,10 @@
 // library and no dynamic loading: it builds with CGO_ENABLED=0 into a static binary. The
 // generated code is reproducible from the pinned libwebp release (`make verify-generate`).
 //
+// The encoder and the decoder are separate translations: programs that only decode can import
+// github.com/jotadrilo/webp/decode, and programs that only encode github.com/jotadrilo/webp/encode,
+// to link only that half (this package links both).
+//
 // Encode and Decode are safe for concurrent use. Each call borrows one of a small pool of
 // libwebp instances, so steady-state calls allocate little beyond the decoded image.
 //

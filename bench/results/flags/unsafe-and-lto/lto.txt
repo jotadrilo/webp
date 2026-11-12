@@ -1,0 +1,90 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/jotadrilo/webp
+cpu: Apple M5 Pro
+BenchmarkEncode/m0         	      20	   2053790 ns/op	   66262 B/op	       6 allocs/op
+BenchmarkEncode/m4         	      20	  11709277 ns/op	       2 B/op	       0 allocs/op
+BenchmarkDecode/lossy      	      20	   1064706 ns/op	   5.84 MB/s	  393346 B/op	       4 allocs/op
+BenchmarkDecode/lossless   	      20	   1313550 ns/op	  66.28 MB/s	  393346 B/op	       4 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/jotadrilo/webp
+cpu: Apple M5 Pro
+BenchmarkEncode/m0         	      20	   2068573 ns/op	   66262 B/op	       6 allocs/op
+BenchmarkEncode/m4         	      20	  11706579 ns/op	       2 B/op	       0 allocs/op
+BenchmarkDecode/lossy      	      20	   1090042 ns/op	   5.70 MB/s	  393346 B/op	       4 allocs/op
+BenchmarkDecode/lossless   	      20	   1303835 ns/op	  66.78 MB/s	  393346 B/op	       4 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/jotadrilo/webp
+cpu: Apple M5 Pro
+BenchmarkEncode/m0         	      20	   2072038 ns/op	   66262 B/op	       6 allocs/op
+BenchmarkEncode/m4         	      20	  11776585 ns/op	       2 B/op	       0 allocs/op
+BenchmarkDecode/lossy      	      20	   1095696 ns/op	   5.67 MB/s	  393346 B/op	       4 allocs/op
+BenchmarkDecode/lossless   	      20	   1312462 ns/op	  66.34 MB/s	  393346 B/op	       4 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/jotadrilo/webp
+cpu: Apple M5 Pro
+BenchmarkEncode/m0         	      20	   2068346 ns/op	   66262 B/op	       6 allocs/op
+BenchmarkEncode/m4         	      20	  11749073 ns/op	       2 B/op	       0 allocs/op
+BenchmarkDecode/lossy      	      20	   1049456 ns/op	   5.92 MB/s	  393346 B/op	       4 allocs/op
+BenchmarkDecode/lossless   	      20	   1306490 ns/op	  66.64 MB/s	  393346 B/op	       4 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/jotadrilo/webp
+cpu: Apple M5 Pro
+BenchmarkEncode/m0         	      20	   2067390 ns/op	   66262 B/op	       6 allocs/op
+BenchmarkEncode/m4         	      20	  11708731 ns/op	       2 B/op	       0 allocs/op
+BenchmarkDecode/lossy      	      20	   1061773 ns/op	   5.85 MB/s	  393346 B/op	       4 allocs/op
+BenchmarkDecode/lossless   	      20	   1307356 ns/op	  66.60 MB/s	  393346 B/op	       4 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/jotadrilo/webp
+cpu: Apple M5 Pro
+BenchmarkEncode/m0         	      20	   2087175 ns/op	   66262 B/op	       6 allocs/op
+BenchmarkEncode/m4         	      20	  11967500 ns/op	       2 B/op	       0 allocs/op
+BenchmarkDecode/lossy      	      20	   1058890 ns/op	   5.87 MB/s	  393346 B/op	       4 allocs/op
+BenchmarkDecode/lossless   	      20	   1324540 ns/op	  65.73 MB/s	  393346 B/op	       4 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/jotadrilo/webp
+cpu: Apple M5 Pro
+BenchmarkEncode/m0         	      20	   2049706 ns/op	   66262 B/op	       6 allocs/op
+BenchmarkEncode/m4         	      20	  11717996 ns/op	       2 B/op	       0 allocs/op
+BenchmarkDecode/lossy      	      20	   1029865 ns/op	   6.03 MB/s	  393346 B/op	       4 allocs/op
+BenchmarkDecode/lossless   	      20	   1313240 ns/op	  66.30 MB/s	  393346 B/op	       4 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/jotadrilo/webp
+cpu: Apple M5 Pro
+BenchmarkEncode/m0         	      20	   2073248 ns/op	   66262 B/op	       6 allocs/op
+BenchmarkEncode/m4         	      20	  11697131 ns/op	       2 B/op	       0 allocs/op
+BenchmarkDecode/lossy      	      20	   1057879 ns/op	   5.87 MB/s	  393346 B/op	       4 allocs/op
+BenchmarkDecode/lossless   	      20	   1306123 ns/op	  66.66 MB/s	  393346 B/op	       4 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/jotadrilo/webp
+cpu: Apple M5 Pro
+BenchmarkEncode/m0         	      20	   2066640 ns/op	   66262 B/op	       6 allocs/op
+BenchmarkEncode/m4         	      20	  11688527 ns/op	       2 B/op	       0 allocs/op
+BenchmarkDecode/lossy      	      20	   1071108 ns/op	   5.80 MB/s	  393346 B/op	       4 allocs/op
+BenchmarkDecode/lossless   	      20	   1312919 ns/op	  66.31 MB/s	  393346 B/op	       4 allocs/op
+PASS
+goos: darwin
+goarch: arm64
+pkg: github.com/jotadrilo/webp
+cpu: Apple M5 Pro
+BenchmarkEncode/m0         	      20	   2045654 ns/op	   66262 B/op	       6 allocs/op
+BenchmarkEncode/m4         	      20	  12061235 ns/op	       2 B/op	       0 allocs/op
+BenchmarkDecode/lossy      	      20	   1082321 ns/op	   5.74 MB/s	  393346 B/op	       4 allocs/op
+BenchmarkDecode/lossless   	      20	   1317467 ns/op	  66.08 MB/s	  393346 B/op	       4 allocs/op
+PASS

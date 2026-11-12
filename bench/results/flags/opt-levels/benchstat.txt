@@ -1,0 +1,36 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/jotadrilo/webp
+cpu: Apple M5 Pro
+                │     O3      │                 O2                 │                 Os                  │                 Oz                  │
+                │   sec/op    │   sec/op     vs base               │   sec/op     vs base                │   sec/op     vs base                │
+Encode/m0         2.078m ± 2%   2.187m ± 4%  +5.26% (p=0.000 n=10)   2.617m ± 1%  +25.92% (p=0.000 n=10)   3.028m ± 1%  +45.70% (p=0.000 n=10)
+Encode/m4         11.82m ± 1%   12.64m ± 1%  +6.91% (p=0.000 n=10)   15.54m ± 2%  +31.43% (p=0.000 n=10)   16.33m ± 2%  +38.14% (p=0.000 n=10)
+Decode/lossy      1.086m ± 2%   1.079m ± 4%       ~ (p=0.912 n=10)   1.110m ± 5%   +2.23% (p=0.000 n=10)   1.487m ± 3%  +36.98% (p=0.000 n=10)
+Decode/lossless   1.322m ± 1%   1.322m ± 1%       ~ (p=0.631 n=10)   1.392m ± 1%   +5.25% (p=0.000 n=10)   1.750m ± 1%  +32.31% (p=0.000 n=10)
+geomean           2.437m        2.506m       +2.83%                  2.815m       +15.52%                  3.368m       +38.20%
+
+                │      O3      │                  O2                   │                  Os                   │                  Oz                   │
+                │     B/op     │     B/op      vs base                 │     B/op      vs base                 │     B/op      vs base                 │
+Encode/m0         64.51Ki ± 0%   64.51Ki ± 0%       ~ (p=1.000 n=10) ¹   64.51Ki ± 0%  +0.01% (p=0.000 n=10)     64.51Ki ± 0%  +0.01% (p=0.000 n=10)
+Encode/m4           6.000 ± 0%     6.000 ± 0%       ~ (p=1.000 n=10) ¹     6.000 ± 0%       ~ (p=1.000 n=10) ¹     6.000 ± 0%       ~ (p=1.000 n=10) ¹
+Decode/lossy      448.8Ki ± 0%   448.8Ki ± 0%       ~ (p=0.087 n=10)     448.8Ki ± 0%       ~ (p=1.000 n=10)     448.8Ki ± 0%       ~ (p=1.000 n=10) ¹
+Decode/lossless   447.7Ki ± 0%   447.7Ki ± 0%       ~ (p=1.000 n=10) ¹   447.7Ki ± 0%       ~ (p=1.000 n=10) ¹   447.7Ki ± 0%       ~ (p=1.000 n=10) ¹
+geomean           16.60Ki        16.60Ki       +0.00%                    16.60Ki       +0.00%                    16.60Ki       +0.00%
+¹ all samples are equal
+
+                │      O3      │                  O2                  │                 Os                  │                 Oz                  │
+                │  allocs/op   │  allocs/op   vs base                 │ allocs/op   vs base                 │ allocs/op   vs base                 │
+Encode/m0         2.000 ± 0%     2.000 ±  0%       ~ (p=1.000 n=10) ¹   2.000 ± 0%       ~ (p=1.000 n=10) ¹   2.000 ± 0%       ~ (p=1.000 n=10) ¹
+Encode/m4         0.000 ± 0%     0.000 ±  0%       ~ (p=1.000 n=10) ¹   0.000 ± 0%       ~ (p=1.000 n=10) ¹   0.000 ± 0%       ~ (p=1.000 n=10) ¹
+Decode/lossy      9.000 ± 0%     9.000 ± 11%       ~ (p=0.087 n=10)     9.000 ± 0%       ~ (p=1.000 n=10)     9.000 ± 0%       ~ (p=1.000 n=10) ¹
+Decode/lossless   4.000 ± 0%     4.000 ±  0%       ~ (p=1.000 n=10) ¹   4.000 ± 0%       ~ (p=1.000 n=10) ¹   4.000 ± 0%       ~ (p=1.000 n=10) ¹
+geomean                      ²                +0.00%                ²               +0.00%                ²               +0.00%                ²
+¹ all samples are equal
+² summaries must be >0 to compute geomean
+
+                │      O3      │                 O2                  │                 Os                  │                  Oz                  │
+                │     B/s      │     B/s       vs base               │     B/s       vs base               │     B/s       vs base                │
+Decode/lossy      5.460Mi ± 2%   5.488Mi ± 4%       ~ (p=0.897 n=10)   5.341Mi ± 5%  -2.18% (p=0.000 n=10)   3.986Mi ± 3%  -26.99% (p=0.000 n=10)
+Decode/lossless   62.79Mi ± 1%   62.82Mi ± 1%       ~ (p=0.617 n=10)   59.65Mi ± 1%  -5.00% (p=0.000 n=10)   47.45Mi ± 1%  -24.42% (p=0.000 n=10)
+geomean           18.51Mi        18.57Mi       +0.29%                  17.85Mi       -3.60%                  13.75Mi       -25.71%
