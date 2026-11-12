@@ -1,0 +1,48 @@
+name: libwebp release check
+
+# Weekly: if libwebp (or wasi-sdk, or wasm2go) has a newer release than the pinned one, open an
+# issue. Updating is a deliberate change (new checksum, regenerate, review, benchmark): nothing
+# is merged automatically.
+on:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compare pinned versions with the latest releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          source internal/gen/toolchain.env
+          latest_tag() { # repo, tag regex
+            gh api "repos/$1/tags?per_page=100" --paginate --jq '.[].name' | grep -E "$2" | sort -V | tail -1
+          }
+          libwebp=$(latest_tag webmproject/libwebp '^v[0-9]+\.[0-9]+\.[0-9]+$')
+          wasisdk=$(latest_tag WebAssembly/wasi-sdk '^wasi-sdk-[0-9]+$')
+          wasm2go=$(latest_tag ncruces/wasm2go '^v[0-9]+\.[0-9]+\.[0-9]+$')
+          body=""
+          [[ $libwebp != "v$LIBWEBP_VERSION" ]] && body+="- libwebp: pinned v$LIBWEBP_VERSION, latest **$libwebp** (https://chromium.googlesource.com/webm/libwebp/+/refs/tags/$libwebp/NEWS)"$'\n'
+          [[ $wasisdk != "wasi-sdk-${WASI_SDK_VERSION%%.*}" ]] && body+="- wasi-sdk: pinned $WASI_SDK_VERSION, latest **$wasisdk**"$'\n'
+          [[ $wasm2go != "$WASM2GO_VERSION" ]] && body+="- wasm2go: pinned $WASM2GO_VERSION, latest **$wasm2go**"$'\n'
+          if [[ -z $body ]]; then
+            echo "all pinned versions are the latest"
+            exit 0
+          fi
+          title="New upstream release: ${libwebp} / ${wasisdk} / ${wasm2go}"
+          if [[ -n $(gh issue list --state open --search "in:title \"$title\"" --json number --jq '.[].number') ]]; then
+            echo "issue already open: $title"
+            exit 0
+          fi
+          gh issue create --title "$title" --body "$body
+          To update: change internal/gen/toolchain.env (version, URL, SHA-256 from the official
+          release), run \`make generate testdata\`, review the diff of internal/gen, run
+          \`make test bench\`, and update BENCHMARKS.md. Opened by .github/workflows/libwebp-release.yml."

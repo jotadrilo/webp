@@ -168,6 +168,9 @@ func decode(t testing.TB, b []byte) *image.NRGBA {
 func TestRoundTrip(t *testing.T) {
 	for _, kind := range testimg.Kinds {
 		for _, sz := range [][2]int{{1, 1}, {3, 2}, {37, 61}, {200, 150}} {
+			if testing.Short() && sz[0] > 64 {
+				continue
+			}
 			src := testimg.New(kind, sz[0], sz[1])
 			t.Run(fmt.Sprintf("%s-%dx%d", kind, sz[0], sz[1]), func(t *testing.T) {
 				// Lossless: identical, and with Exact even the RGB under alpha 0.
@@ -215,8 +218,12 @@ func TestEncodeDecodeWithDwebp(t *testing.T) {
 		"default": nil, "q90m6": {Quality: 90, Method: 6}, "q50m0": {Quality: 50, Method: 0},
 		"lossless": {Lossless: true, Quality: 50, Method: 2}, "exact": {Lossless: true, Exact: true, Quality: 10},
 	}
+	w, h := 157, 103
+	if testing.Short() {
+		w, h = 41, 23
+	}
 	for _, kind := range testimg.Kinds {
-		src := testimg.New(kind, 157, 103)
+		src := testimg.New(kind, w, h)
 		for on, o := range opts {
 			t.Run(kind+"-"+on, func(t *testing.T) {
 				b := encode(t, src, o)

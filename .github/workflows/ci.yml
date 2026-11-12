@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest]
+        go: ["1.25.x", stable]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go }}
+      - uses: actions/cache@v4
+        with:
+          path: .cache/dl
+          key: dl-${{ hashFiles('internal/gen/toolchain.env') }}
+      - name: Build libwebp's dwebp and cwebp (the test references)
+        run: make dwebp
+      - name: Test (with a 2000-image soak)
+        run: go test -count=1 ./...
+      - name: Test with the race detector
+        run: go test -count=1 -race -short ./...
+      - name: Build without cgo
+        env:
+          CGO_ENABLED: "0"
+        run: |
+          go build ./...
+          GOOS=windows GOARCH=amd64 go build ./...
+          GOOS=linux GOARCH=386 go build ./...
+          GOOS=js GOARCH=wasm go build ./...
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      - run: go vet ./...
+      - uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.11.4
+
+  verify-generate:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      - uses: actions/cache@v4
+        with:
+          path: .cache/dl
+          key: dl-${{ runner.arch }}-${{ hashFiles('internal/gen/toolchain.env') }}
+      - name: Regenerate internal/gen from the pinned libwebp and toolchain; fail on any difference
+        run: make verify-generate
