@@ -1,0 +1,14 @@
+github.com/jotadrilo/webp
+Copyright (c) 2026, jotadrilo. Licensed under the BSD 3-Clause License (LICENSE).
+
+This product includes software developed by Google: libwebp
+(https://chromium.googlesource.com/webm/libwebp), release 1.6.0.
+Copyright (c) 2010, Google Inc. All rights reserved.
+Licensed under the BSD 3-Clause License: third_party/libwebp/LICENSE.
+Google's additional patent grant for WebP: third_party/libwebp/PATENTS.
+Authors: third_party/libwebp/AUTHORS.
+
+internal/gen/libwebp.go is libwebp 1.6.0 compiled to WebAssembly with wasi-sdk (which links
+parts of wasi-libc: musl and dlmalloc, MIT / CC0 licensed) and translated to Go with wasm2go
+(https://github.com/ncruces/wasm2go, MIT); it remains a derivative of libwebp under libwebp's
+license. The file carries no other third-party code.
