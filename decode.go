@@ -71,8 +71,8 @@ func Decode(r io.Reader) (image.Image, error) {
 func DecodeConfig(r io.Reader) (image.Config, error) {
 	var cfg image.Config
 	err := call("decode config", func(i *instance) error {
-		// The features live in the first 30 bytes, unless chunks come before the image chunk:
-		// read more until libwebp has enough.
+		// The features live in the first 30 bytes of a RIFF file; otherwise read more until
+		// libwebp has enough.
 		buf := make([]byte, 0, 64)
 		for {
 			k, err := io.ReadFull(r, buf[len(buf):cap(buf)])
@@ -91,7 +91,9 @@ func DecodeConfig(r io.Reader) (image.Config, error) {
 				}
 				return nil
 			}
-			if !errors.Is(ferr, ErrTruncated) || err != nil || len(buf) >= 1<<20 {
+			// More data can turn any failure into success (raw VP8 bitstreams are only checked
+			// against the bytes given), so read on until the end of the stream.
+			if err != nil || len(buf) >= 1<<20 {
 				if err != nil && !errors.Is(err, io.EOF) && !errors.Is(err, io.ErrUnexpectedEOF) {
 					return err
 				}
