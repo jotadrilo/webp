@@ -33,7 +33,7 @@ func readPNG(t testing.TB, path string) *image.NRGBA {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	m, err := png.Decode(f)
 	if err != nil {
 		t.Fatal(err)
@@ -416,7 +416,8 @@ func TestErrors(t *testing.T) {
 	for name, c := range decodes {
 		t.Run("decode "+name, func(t *testing.T) {
 			m, err := webp.Decode(bytes.NewReader(c.in))
-			if !errors.Is(err, c.want) && !(name == "corrupt" && errors.Is(err, webp.ErrTruncated)) || m != nil {
+			ok := errors.Is(err, c.want) || name == "corrupt" && errors.Is(err, webp.ErrTruncated)
+			if !ok || m != nil {
 				t.Errorf("got %v, %v; want %v", m, err, c.want)
 			}
 			var we *webp.Error

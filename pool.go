@@ -3,6 +3,8 @@ package webp
 import (
 	"io"
 	"runtime"
+	"sync/atomic"
+	"time"
 
 	"github.com/jotadrilo/webp/internal/gen"
 )
@@ -25,14 +27,41 @@ const maxPooledMemory = 32 << 20
 
 var pool = make(chan *instance, runtime.GOMAXPROCS(0))
 
+// lastUse is when an instance was last taken (nanoseconds since start). At each garbage
+// collection, if the package has been idle for idleTrim, the pool releases one instance, so that
+// memory grown during a burst of concurrent calls goes back to the Go heap once the package is
+// idle (the runtime collects at least every two minutes), without a background goroutine. Use
+// in between keeps every instance warm.
+var lastUse atomic.Int64
+
+const idleTrim = 10 * time.Second
+
+var start = time.Now()
+
+func init() { armTrim() }
+
+func armTrim() {
+	s := new([16]byte) // 16 bytes: not a tiny allocation, so its cleanup runs
+	runtime.AddCleanup(s, func(struct{}) {
+		if time.Since(start)-time.Duration(lastUse.Load()) >= idleTrim {
+			select {
+			case <-pool:
+			default:
+			}
+		}
+		armTrim()
+	}, struct{}{})
+}
+
 func getInstance() *instance {
+	lastUse.Store(int64(time.Since(start)))
 	select {
 	case i := <-pool:
 		return i
 	default:
 	}
 	i := new(instance)
-	i.m = gen.New(i)
+	i.m = gen.New(i, i)
 	i.m.X_initialize()
 	return i
 }
@@ -66,6 +95,14 @@ func (i *instance) Xwrite(p, n int32) int32 {
 		return 0
 	}
 	return 1
+}
+
+// Xrandom_get is the WASI import wasi-libc uses to seed its stack-protector canary. The
+// module's memory is a bounds-checked Go slice, so the canary protects nothing here; a fixed
+// value keeps every instance deterministic.
+func (i *instance) Xrandom_get(p, n int32) int32 {
+	clear(i.m.Mem()[uint32(p) : uint32(p)+uint32(n)])
+	return 0
 }
 
 // call runs f on a pooled instance. A panic inside the module (a trap) discards the instance

@@ -27,9 +27,9 @@ func ParsePAM(p []byte) (*image.NRGBA, error) {
 	}
 	var w, h, depth int
 	for _, line := range strings.Split(string(p[:end]), "\n") {
-		fmt.Sscanf(line, "WIDTH %d", &w)
-		fmt.Sscanf(line, "HEIGHT %d", &h)
-		fmt.Sscanf(line, "DEPTH %d", &depth)
+		_, _ = fmt.Sscanf(line, "WIDTH %d", &w)
+		_, _ = fmt.Sscanf(line, "HEIGHT %d", &h)
+		_, _ = fmt.Sscanf(line, "DEPTH %d", &depth)
 	}
 	px := p[end+7:]
 	if depth != 4 || w <= 0 || h <= 0 || len(px) < w*h*4 {

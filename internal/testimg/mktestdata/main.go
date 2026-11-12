@@ -33,7 +33,7 @@ func main() {
 	must(os.MkdirAll(filepath.Join(*out, "golden"), 0o755))
 	tmp, err := os.MkdirTemp("", "mktestdata")
 	must(err)
-	defer os.RemoveAll(tmp)
+	defer func() { _ = os.RemoveAll(tmp) }()
 	for _, kind := range testimg.Kinds {
 		m := testimg.New(kind, 128, 96)
 		var b bytes.Buffer
