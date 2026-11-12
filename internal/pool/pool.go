@@ -6,7 +6,7 @@ package pool
 
 import (
 	"runtime"
-	"sync/atomic"
+	"sync"
 	"time"
 )
 
@@ -15,50 +15,72 @@ import (
 // instead of staying pinned in the pool.
 const MaxMemory = 32 << 20
 
-// IdleTrim is how long the pool must go unused before garbage collections start releasing its
-// instances, one per collection (the runtime collects at least every two minutes), so that
-// memory grown during a burst of concurrent calls goes back to the Go heap once the package is
-// idle, without a background goroutine.
+// IdleTrim is how long an idle instance stays pooled. At each garbage collection (the runtime
+// collects at least every two minutes) the instances idle for longer are released, so memory
+// grown during a burst of concurrent calls goes back to the Go heap, without a background
+// goroutine.
 const IdleTrim = 10 * time.Second
 
-// Pool holds at most GOMAXPROCS (at creation) idle instances of T.
+type entry[T any] struct {
+	t    T
+	idle time.Duration // since the pool's start, when it was put back
+}
+
+// Pool holds at most GOMAXPROCS (at creation) idle instances of T, as a stack: the most recently
+// used instance is reused first, so sequential calls keep reusing one warm instance (whose
+// memory has grown to fit them) while the rest go cold and are released.
 type Pool[T any] struct {
-	idle    chan T
+	mu      sync.Mutex
+	stack   []entry[T] // stack[0] is the coldest
+	max     int
 	newT    func() T
 	memSize func(T) int
-	lastUse atomic.Int64 // nanoseconds since start
 	start   time.Time
 }
 
 // New returns a pool that creates instances with newT and measures their memory with memSize.
 func New[T any](newT func() T, memSize func(T) int) *Pool[T] {
-	p := &Pool[T]{idle: make(chan T, runtime.GOMAXPROCS(0)), newT: newT, memSize: memSize, start: time.Now()}
+	p := &Pool[T]{max: runtime.GOMAXPROCS(0), newT: newT, memSize: memSize, start: time.Now()}
 	p.armTrim()
 	return p
 }
 
 func (p *Pool[T]) armTrim() {
 	s := new([16]byte) // 16 bytes: not a tiny allocation, so its cleanup runs
-	runtime.AddCleanup(s, func(*Pool[T]) {
-		if p.Idle() >= IdleTrim {
-			select {
-			case <-p.idle:
-			default:
-			}
-		}
+	runtime.AddCleanup(s, func(p *Pool[T]) {
+		p.trim(IdleTrim)
 		p.armTrim()
 	}, p)
 }
 
-// Get returns an idle instance, or a new one.
-func (p *Pool[T]) Get() T {
-	p.lastUse.Store(int64(time.Since(p.start)))
-	select {
-	case t := <-p.idle:
-		return t
-	default:
-		return p.newT()
+// trim releases the instances idle for at least d.
+func (p *Pool[T]) trim(d time.Duration) {
+	now := time.Since(p.start)
+	p.mu.Lock()
+	k := 0
+	for k < len(p.stack) && now-p.stack[k].idle >= d {
+		k++
 	}
+	if k > 0 {
+		n := copy(p.stack, p.stack[k:])
+		clear(p.stack[n:])
+		p.stack = p.stack[:n]
+	}
+	p.mu.Unlock()
+}
+
+// Get returns the most recently used idle instance, or a new one.
+func (p *Pool[T]) Get() T {
+	p.mu.Lock()
+	if n := len(p.stack); n > 0 {
+		t := p.stack[n-1].t
+		p.stack[n-1] = entry[T]{}
+		p.stack = p.stack[:n-1]
+		p.mu.Unlock()
+		return t
+	}
+	p.mu.Unlock()
+	return p.newT()
 }
 
 // Put gives t back for reuse, unless its memory grew beyond MaxMemory or the pool is full.
@@ -66,22 +88,29 @@ func (p *Pool[T]) Put(t T) {
 	if p.memSize(t) > MaxMemory {
 		return
 	}
-	select {
-	case p.idle <- t:
-	default:
+	now := time.Since(p.start)
+	p.mu.Lock()
+	if len(p.stack) < p.max {
+		p.stack = append(p.stack, entry[T]{t, now})
 	}
+	p.mu.Unlock()
 }
 
 // Len returns the number of idle instances.
-func (p *Pool[T]) Len() int { return len(p.idle) }
-
-// Cap returns the most idle instances the pool keeps.
-func (p *Pool[T]) Cap() int { return cap(p.idle) }
-
-// Idle returns the time since the last Get.
-func (p *Pool[T]) Idle() time.Duration {
-	return time.Since(p.start) - time.Duration(p.lastUse.Load())
+func (p *Pool[T]) Len() int {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return len(p.stack)
 }
 
-// SetLastUse is for tests: it pretends the last Get was d ago.
-func (p *Pool[T]) SetLastUse(d time.Duration) { p.lastUse.Store(int64(time.Since(p.start) - d)) }
+// Cap returns the most idle instances the pool keeps.
+func (p *Pool[T]) Cap() int { return p.max }
+
+// Age is for tests: it pretends every idle instance was put back d ago.
+func (p *Pool[T]) Age(d time.Duration) {
+	p.mu.Lock()
+	for i := range p.stack {
+		p.stack[i].idle -= d
+	}
+	p.mu.Unlock()
+}

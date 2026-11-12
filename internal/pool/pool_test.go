@@ -32,13 +32,20 @@ func TestBoundedAndShrinks(t *testing.T) {
 	if p.Len() != p.Cap() {
 		t.Fatal("an oversized instance was kept")
 	}
-	_ = p.Get()
+	// LIFO: the instance put back last comes out first.
+	hot := &inst{}
+	p2 := pool.New(func() *inst { return &inst{} }, func(i *inst) int { return i.mem })
+	p2.Put(&inst{})
+	p2.Put(hot)
+	if p2.Get() != hot {
+		t.Error("Get did not return the most recently used instance")
+	}
 	runtime.GC()
 	runtime.GC()
-	if p.Len() != p.Cap()-1 {
+	if p.Len() != p.Cap() {
 		t.Fatalf("recent use: GC released instances (%d left)", p.Len())
 	}
-	p.SetLastUse(pool.IdleTrim)
+	p.Age(pool.IdleTrim)
 	deadline := time.Now().Add(10 * time.Second)
 	for p.Len() > 0 && time.Now().Before(deadline) {
 		runtime.GC()
