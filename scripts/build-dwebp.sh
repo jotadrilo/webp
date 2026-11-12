@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # Builds libwebp's own dwebp and cwebp natively (with libwebp's SIMD: NEON / SSE2) from the
-# pinned source, without PNG/JPEG/TIFF support (PAM in and out is enough), into .cache/bin.
+# pinned source, without PNG/JPEG/TIFF support (PAM in and out is enough), into .cache/bin
+# (or $BINDIR).
 # Tests and the benchmark use dwebp as the reference decoder.
 set -euo pipefail
 root=$(cd "$(dirname "$0")/.." && pwd)
 "$root/scripts/fetch-libwebp.sh" >&2
 L=$root/third_party/libwebp/_src
-bin=$root/.cache/bin
+bin=${BINDIR:-$root/.cache/bin}
 mkdir -p "$bin"
 lib=$(cd "$L" && ls src/dec/*.c src/enc/*.c src/dsp/*.c src/utils/*.c src/demux/*.c sharpyuv/*.c)
 cd "$L"

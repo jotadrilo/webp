@@ -47,9 +47,9 @@ jobs:
         with:
           go-version: stable
       - run: go vet ./...
-      - uses: golangci/golangci-lint-action@v8
+      - uses: golangci/golangci-lint-action@v9
         with:
-          version: v2.11.4
+          version: v2.15.0
 
   verify-generate:
     strategy:

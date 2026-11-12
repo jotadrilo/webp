@@ -28,7 +28,15 @@ var (
 type Error = werr.Error
 
 // An instance is one libwebp decoder module.
-type instance struct{ m *dec.Module }
+type instance struct {
+	m *dec.Module
+	// detached: the module's memory now backs a decoded image; never reuse the module.
+	detached bool
+}
+
+// zeroCopyMin is the smallest decoded image (in bytes) that takes its pixels straight from the
+// module's memory instead of a copy, when that memory holds little else (see Decode).
+const zeroCopyMin = 8 << 20
 
 var instances = pool.New(func() *instance {
 	i := new(instance)
@@ -54,7 +62,9 @@ func call(op string, f func(*instance) error) (err error) {
 			err = &werr.Error{Op: op, Err: werr.ErrInternal}
 			return
 		}
-		instances.Put(i)
+		if !i.detached {
+			instances.Put(i)
+		}
 	}()
 	return f(i)
 }
@@ -83,7 +93,11 @@ func Decode(r io.Reader) (image.Image, error) {
 		if err != nil {
 			return err
 		}
-		defer i.m.Xfree(p)
+		defer func() {
+			if !i.detached {
+				i.m.Xfree(p)
+			}
+		}()
 		f, err := getFeatures(i, "decode", p, n)
 		if err != nil {
 			return err
@@ -93,16 +107,30 @@ func Decode(r io.Reader) (image.Image, error) {
 		}
 		stride := f.width * 4
 		size := stride * f.height
+		// A large image whose module holds little else keeps the module's memory as its pixels:
+		// no copy, and half the peak memory. The module is then discarded (it would be anyway:
+		// it outgrows the pool), and what else its memory holds (the input, libwebp's heap)
+		// stays allocated with the image, an eighth of it at most.
+		zeroCopy := size >= zeroCopyMin && len(i.m.Mem()) <= size/8
 		q := i.m.Xmalloc(int32(size))
 		if q == 0 {
 			return &werr.Error{Op: "decode", Code: werr.StatusOutOfMemory, Err: ErrOutOfMemory}
 		}
-		defer i.m.Xfree(q)
+		if !zeroCopy {
+			defer i.m.Xfree(q)
+		}
 		if st := i.m.Xwp_decode(p, n, q, int32(size), int32(stride)); st != werr.StatusOK {
 			return werr.Decode("decode", st)
 		}
-		pix := make([]byte, size)
-		copy(pix, i.m.Mem()[uint32(q):uint32(q)+uint32(size)])
+		var pix []byte
+		if zeroCopy {
+			// Freeing would write allocator metadata into the pixels: leave the module as it is.
+			i.detached = true
+			pix = i.m.Mem()[uint32(q) : uint32(q)+uint32(size) : uint32(q)+uint32(size)]
+		} else {
+			pix = make([]byte, size)
+			copy(pix, i.m.Mem()[uint32(q):uint32(q)+uint32(size)])
+		}
 		rect := image.Rect(0, 0, f.width, f.height)
 		if f.alpha {
 			out = &image.NRGBA{Pix: pix, Stride: stride, Rect: rect}

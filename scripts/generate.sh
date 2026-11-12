@@ -38,4 +38,4 @@ build() { # name cflags ldflags exports sources...
 # shellcheck disable=SC2086
 build dec "$DEC_CFLAGS" "$DEC_LDFLAGS" "malloc realloc free wp_features wp_decode" $dec_src
 # shellcheck disable=SC2086
-build enc "$ENC_CFLAGS" "$ENC_LDFLAGS" "malloc free wp_encode" $enc_src
+build enc "$ENC_CFLAGS" "$ENC_LDFLAGS" "malloc free wp_picture wp_argb wp_argb_stride wp_picture_free wp_import_rows wp_encode" $enc_src

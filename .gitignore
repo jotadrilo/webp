@@ -1,3 +1,4 @@
 /.cache/
 /third_party/libwebp/_src/
 /bench/work/
+/bench/work-linux/
