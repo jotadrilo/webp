@@ -116,8 +116,9 @@ Updating is a reviewed change, never an automatic merge.
 gen2brain/webp, gen2brain/vpx, golang.org/x/image/webp and eringen/gowebper, in separate
 processes, interleaved in rounds under a machine-wide lock. It reports time at 1, 2 and 4 CPUs,
 throughput, allocations, GC pauses, peak RSS, output size and quality (SSIM/PSNR scored through
-`dwebp`), and agreement with `dwebp`. `make bench-docker` does the same in a Linux container
-pinned to N cores. Results, method and the optimization log are in [BENCHMARKS.md](BENCHMARKS.md).
+`dwebp`), and agreement with `dwebp`. The published numbers come from one environment, native
+macOS on one Mac, recorded with each run so it can be repeated. Results, method and the
+optimization log are in [BENCHMARKS.md](BENCHMARKS.md).
 
 The numbers in BENCHMARKS.md are **provisional** for now: they were measured on a shared machine,
 and the comparison tables await a quiet-machine pass. Measured so far: a 384 px thumbnail

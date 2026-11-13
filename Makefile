@@ -37,9 +37,9 @@ fuzz:
 bench:
 	./bench/run.sh
 
-## bench-docker: the same in a Linux container limited to 1 CPU (PLATFORM=linux/arm64 by default)
+## bench-docker: optional extra, not the published numbers: the same in pinned Linux containers
 bench-docker:
-	./bench/docker.sh $${PLATFORM:-linux/arm64} $${CPUS:-1}
+	./bench/docker.sh $${PLATFORM:-linux/arm64} "$${CPUS:-1 2 4}"
 
 clean:
 	rm -rf .cache third_party/libwebp/_src bench/work

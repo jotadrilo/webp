@@ -3,14 +3,29 @@
 > **Provisional.** Every number here was measured on a shared Mac (Apple M5 Pro, 18 cores)
 > while other work was running. The method below limits the damage (a machine-wide lock,
 > interleaved rounds, a load gate, benchstat over ten rounds), but the comparison tables against
-> other implementations are **pending a quiet-machine pass**. That pass will fill them for macOS
-> arm64 and for Linux arm64 containers pinned to 1, 2 and 4 cores, and will replace all of this.
+> other implementations are **pending a quiet-machine pass** in the environment below, which
+> will replace all of this.
 
 ## Method
 
-`./bench/run.sh [label]` (or `make bench`) runs everything; `./bench/docker.sh linux/arm64`
-(or `make bench-docker`) runs it in Linux containers with `--cpus=N --cpuset-cpus=0..N-1`,
-`GOMAXPROCS=N`, for N = 1, 2, 4.
+The libraries are compared on their own, in **one environment, repeated the same way every
+time: native macOS on one Mac**, with no containers or VMs. (`bench/docker.sh` runs the same
+harness in pinned Linux containers. It is an optional extra and its numbers are not
+published.) The command is
+
+```sh
+./bench/run.sh            # = make bench; label macos-arm64; ROUNDS=10 CPUS="1 2 4"
+```
+
+and `bench/results/<label>/env.txt` records what a later run must match: the Mac model
+(`hw.model`), the chip and its core counts per performance level (`hw.perflevel0/1`), memory,
+the macOS version and build (`sw_vers`), power source, charge and power mode (`pmset -g batt`,
+`pmset -g`), the process priority, the load average before the run (and `load.txt` the load at
+each round), the Go and C compiler versions, this repository's commit, and every compared
+library's version. The processes run at the default priority with no QoS clamp, so macOS keeps
+them on performance cores like any foreground work. They never run under `taskpolicy -c
+utility/background`. Run as root, the script raises them to `nice -5`. CPU counts 1, 2 and 4 are
+set through `GOMAXPROCS` (for the C harness, its thread count, in one process).
 
 - **Implementations:** native C libwebp 1.6.0 (`bench/c/cbench.c`, the ceiling, built from the
   same pinned source with its NEON/SSE2 code and threads), this package, gen2brain/webp v0.6.4
@@ -43,8 +58,12 @@
 
 ## Results
 
-*Pending the quiet-machine pass* (`bench/results/mac-arm64/report.md`,
-`bench/results/linux-arm64-docker/report.md`).
+*Pending the quiet-machine pass* (`bench/results/macos-arm64/report.md` and `env.txt`).
+
+Reference environment (for the pass): Mac17,9, Apple M5 Pro (6 Super + 12 Performance cores,
+48 GB), macOS 26.3.2 (25D2150), on AC power at 100 %, power mode 0 (automatic, no low-power
+mode), Go 1.27.4, gen2brain/webp v0.6.4, gen2brain/vpx v0.2.2, golang.org/x/image v0.47.0,
+eringen/gowebper v0.1.2, C libwebp 1.6.0.
 
 An earlier exploratory run on the same Mac (the prototype this package started from, without
 the lock, mean over nine thumbnails, method 0, q80) gave C libwebp 1.85 ms, gen2brain/vpx

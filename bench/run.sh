@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # The benchmark, in one command: ./bench/run.sh [label]  (default: <os>-<arch>)
 #
+# The published numbers come from one environment, repeated the same way every time: native
+# macOS on one Mac, no containers (docker.sh is an optional extra, not used for them). The exact
+# environment is recorded in results/<label>/env.txt so that a later run can match it.
+#
 # Measures native C libwebp (the ceiling) and the Go implementations in cmd/bench (this package,
 # gen2brain/webp, gen2brain/vpx, golang.org/x/image/webp for decoding, eringen/gowebper) and
 # writes results/<label>/: raw Go benchmark lines (latency.txt, throughput.txt, big.txt),
@@ -20,7 +24,7 @@ set -euo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
 root=$(cd "$here/.." && pwd)
 cd "$here"
-label=${1:-$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m)}
+label=${1:-$( [[ $(uname -s) == Darwin ]] && echo "macos-$(uname -m)" || echo "$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m)")}
 ROUNDS=${ROUNDS:-10}
 CPUS=${CPUS:-"1 2 4"}
 PHASES=${PHASES:-"quality rounds big soak size report"}
@@ -37,6 +41,16 @@ work=${WORK:-$here/work}
 bin=$work/bin
 mkdir -p "$out" "$bin"
 has() { [[ " $PHASES " == *" $1 "* ]]; }
+
+# Priority: never a QoS clamp (taskpolicy -c only lowers it: utility, background, maintenance),
+# so macOS keeps the processes on performance cores like any foreground work; nice -5 when
+# permitted (it needs root).
+if [[ -z ${BENCH_PRIORITY:-} ]]; then
+  if nice -n -5 true 2>/dev/null && [[ $(nice -n -5 nice) == -5 ]]; then
+    BENCH_PRIORITY="nice -5, no QoS clamp" exec nice -n -5 "$0" "$@"
+  fi
+  export BENCH_PRIORITY="nice $(nice) (nice -5 needs root), no QoS clamp"
+fi
 
 locked() {
   if [[ ${NOLOCK:-0} == 1 ]]; then "$@"; else "$FLOCK" "$LOCK" "$@"; fi
@@ -65,14 +79,26 @@ if has quality || has rounds || has big; then
   encs=$("$bin/bench" -list | awk '$1 == "enc" { print $2 }' | grep -E "$ENC" || true)
   decs=$("$bin/bench" -list | awk '$1 == "dec" { print $2 }' | grep -E "$DEC" || true)
   csettings="m0 m4 lossless"
-  cpu_model=$( (sysctl -n machdep.cpu.brand_string 2>/dev/null || grep -m1 'model name\|^CPU part' /proc/cpuinfo || uname -m) | sed 's/.*: //')
   {
-  echo "date:     $(date -u +%Y-%m-%dT%H:%MZ)"
-  echo "host:     $(uname -sm), $ncpu CPUs online, $cpu_model"
-  echo "go:       $(go version)"
-  echo "cc:       $(${CC:-cc} --version | head -1)"
-  echo "libwebp:  $("$dwebp" -version | head -1)"
-  echo "rounds:   $ROUNDS, CPUs: $CPUS, load gate: < $LOADMAX"
+    echo "date:        $(date -u +%Y-%m-%dT%H:%MZ)"
+    echo "command:     $(printf '%q ' "$0" "$@") (ROUNDS=$ROUNDS CPUS=\"$CPUS\" PHASES=\"$PHASES\" SOAK=$SOAK LOADMAX=$LOADMAX)"
+    echo "priority:    $BENCH_PRIORITY"
+    if [[ $(uname -s) == Darwin ]]; then
+      echo "model:       $(sysctl -n hw.model)"
+      echo "chip:        $(sysctl -n machdep.cpu.brand_string); $(sysctl -n hw.perflevel0.physicalcpu) $(sysctl -n hw.perflevel0.name) + $(sysctl -n hw.perflevel1.physicalcpu 2>/dev/null || echo 0) $(sysctl -n hw.perflevel1.name 2>/dev/null || echo -) cores, $(($(sysctl -n hw.memsize) >> 30)) GB"
+      echo "macOS:       $(sw_vers -productVersion) ($(sw_vers -buildVersion))"
+      echo "power:       $(pmset -g batt | sed -n 1p | sed "s/.*'\(.*\)'.*/\1/"); $(pmset -g batt | sed -n 2p | sed 's/^[^)]*)[[:space:]]*//')"
+      echo "power mode:  $(pmset -g | awk '/lowpowermode|powermode/ { printf "%s=%s ", $1, $2 }')"
+    else
+      echo "host:        $(uname -srm), $ncpu CPUs, $(grep -m1 'model name' /proc/cpuinfo 2>/dev/null | sed 's/.*: //')"
+    fi
+    echo "load before: $(uptime | sed 's/.*load averages*: //')"
+    echo "go:          $(go version)"
+    echo "cc:          $(${CC:-cc} --version | head -1)"
+    echo "this repo:   $(git -C "$root" rev-parse --short HEAD)$(git -C "$root" diff --quiet || echo ' (uncommitted changes)')"
+    echo "libwebp:     $("$dwebp" -version | head -1) (C baseline, dwebp/cwebp)"
+    echo "Go packages: $(go list -m -f '{{.Path}}@{{.Version}}' github.com/gen2brain/webp github.com/gen2brain/vpx golang.org/x/image github.com/eringen/gowebper | tr '\n' ' ')"
+    echo "rounds:      $ROUNDS, CPUs (GOMAXPROCS / C threads): $CPUS, load gate: < $LOADMAX"
   } >> "$out/env.txt"
 fi
 
@@ -95,7 +121,7 @@ if has rounds; then
   for n in $CPUS; do
     for r in $(seq "$ROUNDS"); do
       waitload
-      echo "# cpus $n round $r load $(load1) $(date -u +%H:%M:%S)" >> "$out/load.txt"
+      echo "# cpus $n round $r $(date -u +%H:%M:%S) load $(uptime | sed 's/.*load averages*: //')" >> "$out/load.txt"
       echo "cpus $n round $r/$ROUNDS (load $(load1))" >&2
       for s in $csettings; do
         locked "$bin/cbench" "$in" latency enc "$s" "$n" >> "$out/latency.txt"

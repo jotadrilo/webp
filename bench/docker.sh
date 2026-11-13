@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Runs the benchmark in Linux containers, one per CPU count, each limited to that many CPUs
+# Optional extra, not used for the published numbers (those come from one native macOS
+# environment, see run.sh). Runs the benchmark in Linux containers, one per CPU count, each limited to that many CPUs
 # pinned to fixed cores (--cpus=N --cpuset-cpus=0..N-1) with GOMAXPROCS=N, all with the same Go
 # toolchain as run.sh. The host's machine-wide lock is held for each container's whole run (a
 # lock taken inside the VM would not exclude the host). Results go to results/<label>/, then
