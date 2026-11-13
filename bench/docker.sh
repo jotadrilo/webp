@@ -23,7 +23,7 @@ for n in $cpus; do
   echo "== $label: $n CPU(s), phases: $phases" >&2
   "$FLOCK" "$LOCK" docker run --rm --platform "$plat" --cpus="$n" --cpuset-cpus="0-$((n - 1))" --memory=6g \
     -v "$root":/src -v webp-bench-gomod:/go/pkg/mod -v webp-bench-gocache:/root/.cache/go-build \
-    -e GOMAXPROCS="$n" -e NOLOCK=1 -e CPUS="$n" -e PHASES="$phases" -e ROUNDS="${ROUNDS:-10}" \
+    -e NOLOCK=1 -e PHASES="$phases" -e ROUNDS="${ROUNDS:-10}" \
     -e LOADMAX="${LOADMAX:-$n}" -e GOTOOLCHAIN="${GOTOOLCHAIN:-go1.27.4}" -e WORK=/src/bench/work-linux \
     -w /src/bench "$image" \
     bash -c 'export PATH=$PATH:/go/bin; go install golang.org/x/perf/cmd/benchstat@latest >/dev/null 2>&1 || true

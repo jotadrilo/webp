@@ -1,9 +1,10 @@
 // Copyright (c) 2026, jotadrilo. BSD-3-Clause (see LICENSE).
 //
 // cbench: native libwebp, the ceiling of the benchmark. Same inputs as cmd/bench (the .rgba and
-// .webp files of `bench -prep`), same settings, same output (Go benchmark lines). With more
-// than one CPU it lets libwebp use threads within one image (WebPConfig.thread_level,
-// WebPDecoderOptions.use_threads), as cwebp -mt and dwebp -mt do.
+// .webp files of `bench -prep`), same settings, same output (Go benchmark lines). libwebp runs at
+// its defaults: no threads within one image (WebPConfig.thread_level and
+// WebPDecoderOptions.use_threads stay 0, as cwebp and dwebp without -mt); <cpus> is the number of
+// concurrent workers of the throughput run.
 //
 //   cbench <in> latency|throughput|big enc|dec <m0|m4|lossless|-> <cpus> [outdir]
 #include <math.h>
@@ -134,7 +135,7 @@ int main(int argc, char** argv) {
   g_dec = !strcmp(argv[3], "dec");
   g_lossless = !strcmp(setting, "lossless");
   g_method = !strcmp(setting, "m0") ? 0 : 4;
-  g_mt = cpus > 1;
+  g_mt = 0; // libwebp's default
   char impl[64];
   if (g_dec) snprintf(impl, sizeof impl, "c-libwebp");
   else snprintf(impl, sizeof impl, "c-libwebp-%s", setting);

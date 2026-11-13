@@ -10,14 +10,15 @@
 # writes results/<label>/: raw Go benchmark lines (latency.txt, throughput.txt, big.txt),
 # quality scores, benchstat summaries, the soak series, binary sizes, and report.md.
 #
-# Method: every implementation runs in its own process; implementations are interleaved in
-# rounds (A, B, C, A, B, C, ...); each process run holds the machine-wide lock $LOCK (so no two
-# benchmarks share the machine) and starts only when the 1-minute load is under $LOADMAX; the
-# same Go toolchain ($GOTOOLCHAIN) builds everything; GOMAXPROCS (or C's thread count) is the
-# CPU count of the round. Quality is scored once (it does not depend on timing) through
-# libwebp's dwebp.
+# Method: one configuration, the machine as it is: GOMAXPROCS unset (all CPUs), every library
+# at its defaults (C libwebp: no threads within one image, its default), throughput with as many
+# concurrent jobs as CPUs. Every implementation runs in its own process; implementations are
+# interleaved in rounds (C, A, B, ..., C, A, B, ...) for statistics; each process run holds the
+# machine-wide lock $LOCK (so no two benchmarks share the machine) and starts only when the
+# 1-minute load is under $LOADMAX; the same Go toolchain ($GOTOOLCHAIN) builds everything.
+# Quality is scored once (it does not depend on timing) through libwebp's dwebp.
 #
-# Environment: ROUNDS (10), CPUS ("1 2 4"), PHASES ("quality rounds big soak size report"),
+# Environment: ROUNDS (10), PHASES ("quality rounds big soak size report"),
 # SOAK (50000 images), LOADMAX (half the cores), LOCK (/tmp/jotadrilo-bench.lock), FLOCK
 # (flock), NOLOCK=1 (inside a container whose host holds the lock), ENC / DEC (regexes).
 set -euo pipefail
@@ -26,7 +27,6 @@ root=$(cd "$here/.." && pwd)
 cd "$here"
 label=${1:-$( [[ $(uname -s) == Darwin ]] && echo "macos-$(uname -m)" || echo "$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m)")}
 ROUNDS=${ROUNDS:-10}
-CPUS=${CPUS:-"1 2 4"}
 PHASES=${PHASES:-"quality rounds big soak size report"}
 SOAK=${SOAK:-50000}
 LOCK=${LOCK:-/tmp/jotadrilo-bench.lock}
@@ -81,7 +81,7 @@ if has quality || has rounds || has big; then
   csettings="m0 m4 lossless"
   {
     echo "date:        $(date -u +%Y-%m-%dT%H:%MZ)"
-    echo "command:     $(printf '%q ' "$0" "$@") (ROUNDS=$ROUNDS CPUS=\"$CPUS\" PHASES=\"$PHASES\" SOAK=$SOAK LOADMAX=$LOADMAX)"
+    echo "command:     $(printf '%q ' "$0" "$@") (ROUNDS=$ROUNDS PHASES=\"$PHASES\" SOAK=$SOAK LOADMAX=$LOADMAX)"
     echo "priority:    $BENCH_PRIORITY"
     if [[ $(uname -s) == Darwin ]]; then
       echo "model:       $(sysctl -n hw.model)"
@@ -98,7 +98,7 @@ if has quality || has rounds || has big; then
     echo "this repo:   $(git -C "$root" rev-parse --short HEAD)$(git -C "$root" diff --quiet || echo ' (uncommitted changes)')"
     echo "libwebp:     $("$dwebp" -version | head -1) (C baseline, dwebp/cwebp)"
     echo "Go packages: $(go list -m -f '{{.Path}}@{{.Version}}' github.com/gen2brain/webp github.com/gen2brain/vpx golang.org/x/image github.com/eringen/gowebper | tr '\n' ' ')"
-    echo "rounds:      $ROUNDS, CPUs (GOMAXPROCS / C threads): $CPUS, load gate: < $LOADMAX"
+    echo "config:      GOMAXPROCS unset ($ncpu CPUs), library defaults, throughput with $ncpu jobs; $ROUNDS interleaved rounds; load gate < $LOADMAX"
   } >> "$out/env.txt"
 fi
 
@@ -118,7 +118,8 @@ if has quality; then
 fi
 
 if has rounds; then
-  for n in $CPUS; do
+  unset GOMAXPROCS
+  for n in $ncpu; do # one configuration: all CPUs
     for r in $(seq "$ROUNDS"); do
       waitload
       echo "# cpus $n round $r $(date -u +%H:%M:%S) load $(uptime | sed 's/.*load averages*: //')" >> "$out/load.txt"
@@ -130,12 +131,12 @@ if has rounds; then
       locked "$bin/cbench" "$in" latency dec - "$n" >> "$out/latency.txt"
       locked "$bin/cbench" "$in" throughput dec - "$n" >> "$out/throughput.txt"
       for e in $encs; do
-        GOMAXPROCS=$n locked "$bin/bench" -in "$in" -enc "$e" -latency >> "$out/latency.txt"
-        GOMAXPROCS=$n locked "$bin/bench" -in "$in" -enc "$e" -throughput >> "$out/throughput.txt"
+        locked "$bin/bench" -in "$in" -enc "$e" -latency >> "$out/latency.txt"
+        locked "$bin/bench" -in "$in" -enc "$e" -throughput >> "$out/throughput.txt"
       done
       for d in $decs; do
-        GOMAXPROCS=$n locked "$bin/bench" -in "$in" -dec "$d" -latency >> "$out/latency.txt"
-        GOMAXPROCS=$n locked "$bin/bench" -in "$in" -dec "$d" -throughput >> "$out/throughput.txt"
+        locked "$bin/bench" -in "$in" -dec "$d" -latency >> "$out/latency.txt"
+        locked "$bin/bench" -in "$in" -dec "$d" -throughput >> "$out/throughput.txt"
       done
     done
   done
@@ -145,12 +146,12 @@ if has big; then
   echo "24 MP" >&2
   for r in 1 2 3; do
     waitload
-    for s in m0 lossless; do locked "$bin/cbench" "$in" big enc "$s" 1 >> "$out/big.txt"; done
-    locked "$bin/cbench" "$in" big dec - 1 >> "$out/big.txt"
+    for s in m0 lossless; do locked "$bin/cbench" "$in" big enc "$s" "$ncpu" >> "$out/big.txt"; done
+    locked "$bin/cbench" "$in" big dec - "$ncpu" >> "$out/big.txt"
     for e in $(echo "$encs" | grep -E -- '-(m0|lossless)$' | grep -v gowebper); do
-      GOMAXPROCS=1 locked "$bin/bench" -in "$in" -enc "$e" -big >> "$out/big.txt"
+      locked "$bin/bench" -in "$in" -enc "$e" -big >> "$out/big.txt"
     done
-    for d in $decs; do GOMAXPROCS=1 locked "$bin/bench" -in "$in" -dec "$d" -big >> "$out/big.txt"; done
+    for d in $decs; do locked "$bin/bench" -in "$in" -dec "$d" -big >> "$out/big.txt"; done
   done
 fi
 

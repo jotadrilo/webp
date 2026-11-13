@@ -5,7 +5,7 @@
 //	bench -in <dir> -enc <name> -latency     one line per thumbnail: mean ns/op, p50/p95/p99,
 //	                                         B/op, allocs/op, GC pause per op
 //	bench -in <dir> -dec <name> -latency     the same for decoding the lossy and lossless inputs
-//	bench -in <dir> -enc|-dec <name> -throughput  GOMAXPROCS workers for -dur: images/s, peak RSS
+//	bench -in <dir> -enc|-dec <name> -throughput  GOMAXPROCS concurrent jobs for -dur: images/s, peak RSS
 //	bench -in <dir> -enc|-dec <name> -big    the 24 MP image once (after one warm-up): time, peak RSS
 //	bench -in <dir> -enc <name> -quality <dwebp>  JSON: bytes and SSIM/PSNR scored through dwebp
 //	bench -in <dir> -dec <name> -quality <dwebp>  JSON: difference from dwebp's pixels

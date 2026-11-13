@@ -240,10 +240,10 @@ func main() {
 		sort.SliceStable(members, func(i, j int) bool {
 			return perImpl(lat, "Encode", members[i], cpuList[0], "ns/op", eImgs) < perImpl(lat, "Encode", members[j], cpuList[0], "ns/op", eImgs)
 		})
-		fmt.Printf("### Encode: %s\n\nMean over the %d thumbnails of each one's median time (ms); × C is the ratio to native libwebp at the same CPU count, in the same run.\n\n", g.title, len(eImgs))
-		fmt.Printf("| implementation | %s | %s | p99 ms (1 CPU) | alloc KB/op | GC pause µs/op | output KB | mean SSIM | mean PSNR dB | alpha exact | errors |\n",
-			cpuHdr("ms, %d CPU"), cpuHdr("× C, %d CPU"))
-		fmt.Printf("|---|%s%s%s\n", align(2*len(cpuList)), align(4), align(5))
+		fmt.Printf("### Encode: %s\n\nSingle-image latency: mean over the %d thumbnails of each one's median time across rounds (ms); × C is the ratio to native libwebp measured in the same run.\n\n", g.title, len(eImgs))
+		fmt.Printf("| implementation | %s | %s | p50 / p95 / p99 ms | alloc KB/op | GC pause µs/op | output KB | mean SSIM | mean PSNR dB | alpha exact | errors |\n",
+			cpuHdr("ms/image (%d CPUs)"), strings.TrimSuffix(strings.Repeat("× C | ", len(cpuList)), " | "))
+		fmt.Printf("|---|%s%s%s\n", align(2*len(cpuList)), align(3), align(5))
 		for _, impl := range members {
 			var t, r []string
 			for _, c := range cpuList {
@@ -251,7 +251,8 @@ func main() {
 				t = append(t, ms(v))
 				r = append(r, ratio(v, perImpl(lat, "Encode", g.c, c, "ns/op", eImgs)))
 			}
-			p99 := perImpl(lat, "Encode", impl, cpuList[0], "p99-ns", eImgs)
+			pct := fmt.Sprintf("%s / %s / %s", ms(perImpl(lat, "Encode", impl, cpuList[0], "p50-ns", eImgs)),
+				ms(perImpl(lat, "Encode", impl, cpuList[0], "p95-ns", eImgs)), ms(perImpl(lat, "Encode", impl, cpuList[0], "p99-ns", eImgs)))
 			alloc := perImpl(lat, "Encode", impl, cpuList[0], "B/op", eImgs) / 1024
 			gc := perImpl(lat, "Encode", impl, cpuList[0], "gc-pause-ns/op", eImgs) / 1000
 			var bytes int
@@ -274,7 +275,7 @@ func main() {
 				ae = map[bool]string{true: "yes", false: "no"}[alphaOK]
 			}
 			fmt.Printf("| %s | %s | %s | %s | %s | %s | %.1f | %s | %s | %s | %d |\n", impl, strings.Join(t, " | "), strings.Join(r, " | "),
-				ms(p99), num(alloc, "%.0f"), num(gc, "%.0f"), float64(bytes)/1024, sq, pq, ae, errs)
+				pct, num(alloc, "%.0f"), num(gc, "%.0f"), float64(bytes)/1024, sq, pq, ae, errs)
 		}
 		fmt.Println()
 	}
@@ -291,7 +292,7 @@ func main() {
 			return perImpl(lat, "Decode", dm[i], cpuList[0], "ns/op", dImgs) < perImpl(lat, "Decode", dm[j], cpuList[0], "ns/op", dImgs)
 		})
 		fmt.Printf("### Decode\n\nThe %d inputs are the thumbnails encoded by libwebp's cwebp, lossy (q80 m4) and lossless. Agreement with dwebp: the largest per-channel difference from libwebp's own decoding over all inputs, and the mean PSNR against it on the lossy ones (99: identical).\n\n", len(dImgs))
-		fmt.Printf("| implementation | %s | %s | p99 ms (1 CPU) | alloc KB/op | GC pause µs/op | max diff vs dwebp | lossy PSNR vs dwebp | errors |\n", cpuHdr("ms, %d CPU"), cpuHdr("× C, %d CPU"))
+		fmt.Printf("| implementation | %s | %s | p50 / p95 / p99 ms | alloc KB/op | GC pause µs/op | max diff vs dwebp | lossy PSNR vs dwebp | errors |\n", cpuHdr("ms/image (%d CPUs)"), strings.TrimSuffix(strings.Repeat("× C | ", len(cpuList)), " | "))
 		fmt.Printf("|---|%s%s%s\n", align(2*len(cpuList)), align(3), align(3))
 		for _, impl := range dm {
 			var t, r []string
@@ -324,7 +325,8 @@ func main() {
 				}
 			}
 			fmt.Printf("| %s | %s | %s | %s | %s | %s | %s | %s | %d |\n", impl, strings.Join(t, " | "), strings.Join(r, " | "),
-				ms(perImpl(lat, "Decode", impl, cpuList[0], "p99-ns", dImgs)),
+				fmt.Sprintf("%s / %s / %s", ms(perImpl(lat, "Decode", impl, cpuList[0], "p50-ns", dImgs)),
+					ms(perImpl(lat, "Decode", impl, cpuList[0], "p95-ns", dImgs)), ms(perImpl(lat, "Decode", impl, cpuList[0], "p99-ns", dImgs))),
 				num(perImpl(lat, "Decode", impl, cpuList[0], "B/op", dImgs)/1024, "%.0f"),
 				num(perImpl(lat, "Decode", impl, cpuList[0], "gc-pause-ns/op", dImgs)/1000, "%.0f"), md, ps, errs)
 		}
@@ -349,14 +351,14 @@ func main() {
 		sort.SliceStable(names, func(i, j int) bool {
 			return thr[key{op, names[i], "", c1}]["img/s"] > thr[key{op, names[j], "", c1}]["img/s"]
 		})
-		fmt.Printf("### %s: %s, N concurrent workers on N CPUs\n\nImages per second over the thumbnails (one worker per CPU); scaling is the N-CPU throughput over N times the 1-CPU one.\n\n",
+		fmt.Printf("### %s: %s with as many concurrent jobs as CPUs\n\nImages per second over the thumbnails, one job per CPU; × C is native libwebp's throughput over this one's.\n\n",
 			strings.TrimSuffix(op, "Throughput"), "throughput")
 		var sc []string
 		for _, c := range cpuList[1:] {
 			sc = append(sc, fmt.Sprintf("scaling %d CPU", c))
 		}
 		last := cpuList[len(cpuList)-1]
-		fmt.Printf("| implementation | %s | %s | × C, %d CPU | peak RSS MB, %d CPU |\n", cpuHdr("img/s, %d CPU"), strings.Join(sc, " | "), last, last)
+		fmt.Printf("| implementation | %s%s | × C | peak RSS MB |\n", cpuHdr("img/s (%d jobs)"), joinPre(sc))
 		fmt.Printf("|---|%s%s\n", align(len(cpuList)+len(sc)), align(2))
 		cName := "c-libwebp"
 		for _, impl := range names {
@@ -377,7 +379,7 @@ func main() {
 				}
 			}
 			cv := thr[key{op, cref, "", last}]["img/s"]
-			fmt.Printf("| %s | %s | %s | %s | %s |\n", impl, strings.Join(t, " | "), strings.Join(s, " | "),
+			fmt.Printf("| %s | %s%s | %s | %s |\n", impl, strings.Join(t, " | "), joinPre(s),
 				num(cv/thr[key{op, impl, "", last}]["img/s"], "%.2f×"), num(thr[key{op, impl, "", last}]["peak-RSS-MB"], "%.0f"))
 		}
 		fmt.Println()
@@ -385,7 +387,7 @@ func main() {
 
 	// ---- 24 MP ----
 	if len(big) > 0 {
-		fmt.Printf("### One 24 MP image (6000 × 4000), 1 CPU\n\nTime of one encode or decode after a warm-up, and the peak RSS of the process above what it held before (the 96 MB RGBA source of an encode is in the baseline).\n\n")
+		fmt.Printf("### One 24 MP image (6000 × 4000)\n\nTime of one encode or decode after a warm-up, and the peak RSS of the process above what it held before (the 96 MB RGBA source of an encode is in the baseline).\n\n")
 		fmt.Printf("| operation | implementation | time ms | peak RSS above baseline MB |\n|---|---|---:|---:|\n")
 		var ks []key
 		for k := range big {
@@ -402,4 +404,12 @@ func main() {
 		}
 		fmt.Println()
 	}
+}
+
+// joinPre joins s as extra table cells (each preceded by " | "), or nothing.
+func joinPre(s []string) string {
+	if len(s) == 0 {
+		return ""
+	}
+	return " | " + strings.Join(s, " | ")
 }
