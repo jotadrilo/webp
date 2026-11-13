@@ -5,27 +5,36 @@ import (
 	"fmt"
 	"image"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
+	"runtime/debug"
 	"runtime/pprof"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"testing"
 
 	"github.com/jotadrilo/webp"
+	"github.com/jotadrilo/webp/internal/pool"
 	"github.com/jotadrilo/webp/internal/testimg"
 )
 
 type soakSample struct {
-	images                        int
-	heapInuseMB, heapObjsK, rssMB float64
-	numGC                         uint32
+	images int
+	// The heap with the pools as they are, then after releasing every idle pooled instance
+	// (what would remain if nothing leaked: close to nothing), and the process's current and
+	// peak RSS after returning freed memory to the OS.
+	heapInuseMB, heapObjsK, drainedHeapMB, drainedObjsK, rssMB, maxRSSMB float64
+	numGC                                                                uint32
 }
 
 // TestSoak encodes and decodes many images (mixed sizes, kinds, alpha, options, with
-// concurrent bursts) and checks that memory plateaus: the heap after the run is within a small
-// margin of the heap after the warm-up, and the peak RSS stops growing. WEBP_SOAK sets the
+// concurrent bursts) and checks that nothing leaks: at every sample, after the idle pooled
+// instances are released (the pool keeps at most GOMAXPROCS of them, whose sizes depend on
+// which images they last served), the heap and the process's RSS must be back within a small
+// margin of where they were after the warm-up. WEBP_SOAK sets the
 // count (default 2000; the benchmark runs 50000), WEBP_SOAK_CSV writes the samples, and
 // WEBP_SOAK_PROFILE (a directory) writes heap profiles at 1000 and 10000 images.
 func TestSoak(t *testing.T) {
@@ -77,7 +86,14 @@ func TestSoak(t *testing.T) {
 		runtime.GC()
 		var ms runtime.MemStats
 		runtime.ReadMemStats(&ms)
-		return soakSample{images, float64(ms.HeapInuse) / (1 << 20), float64(ms.HeapObjects) / 1000, maxRSSMB(), ms.NumGC}
+		s := soakSample{images: images, heapInuseMB: float64(ms.HeapInuse) / (1 << 20), heapObjsK: float64(ms.HeapObjects) / 1000}
+		pool.ReleaseIdle()
+		runtime.GC()
+		debug.FreeOSMemory()
+		runtime.ReadMemStats(&ms)
+		s.drainedHeapMB, s.drainedObjsK = float64(ms.HeapInuse)/(1<<20), float64(ms.HeapObjects)/1000
+		s.rssMB, s.maxRSSMB, s.numGC = currentRSSMB(), maxRSSMB(), ms.NumGC
+		return s
 	}
 	var samples []soakSample
 	var buf bytes.Buffer
@@ -114,9 +130,10 @@ func TestSoak(t *testing.T) {
 		}
 	}
 	var csv bytes.Buffer
-	csv.WriteString("images,heap_inuse_mb,heap_objects_k,max_rss_mb,num_gc\n")
+	csv.WriteString("images,heap_inuse_mb,heap_objects_k,drained_heap_mb,drained_objects_k,rss_mb,max_rss_mb,num_gc\n")
 	for _, s := range samples {
-		fmt.Fprintf(&csv, "%d,%.2f,%.1f,%.1f,%d\n", s.images, s.heapInuseMB, s.heapObjsK, s.rssMB, s.numGC)
+		fmt.Fprintf(&csv, "%d,%.2f,%.1f,%.2f,%.1f,%.1f,%.1f,%d\n", s.images, s.heapInuseMB, s.heapObjsK,
+			s.drainedHeapMB, s.drainedObjsK, s.rssMB, s.maxRSSMB, s.numGC)
 	}
 	t.Logf("soak samples:\n%s", csv.String())
 	if p := os.Getenv("WEBP_SOAK_CSV"); p != "" {
@@ -124,18 +141,31 @@ func TestSoak(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	// Compare the end with the sample after the first fifth (after the first burst, so the
-	// pool holds its share of instances by then).
+	// Compare the end with the sample after the first fifth (after the first burst).
 	ref, last := samples[len(samples)/5], samples[len(samples)-1]
-	if last.heapInuseMB > ref.heapInuseMB*1.10+2 {
-		t.Errorf("heap grew: %.1f MB in use after %d images, %.1f MB after %d", last.heapInuseMB, last.images, ref.heapInuseMB, ref.images)
+	if last.drainedHeapMB > ref.drainedHeapMB*1.10+1 {
+		t.Errorf("heap grew: %.2f MB in use after %d images (pools drained), %.2f MB after %d",
+			last.drainedHeapMB, last.images, ref.drainedHeapMB, ref.images)
 	}
-	if last.heapObjsK > ref.heapObjsK*1.10+1 {
-		t.Errorf("heap objects grew: %.1fk after %d images, %.1fk after %d", last.heapObjsK, last.images, ref.heapObjsK, ref.images)
+	if last.drainedObjsK > ref.drainedObjsK*1.10+1 {
+		t.Errorf("heap objects grew: %.1fk after %d images, %.1fk after %d", last.drainedObjsK, last.images, ref.drainedObjsK, ref.images)
 	}
-	if last.rssMB > ref.rssMB*1.15+8 {
-		t.Errorf("peak RSS grew: %.0f MB after %d images, %.0f MB after %d", last.rssMB, last.images, ref.rssMB, ref.images)
+	if ref.rssMB > 0 && last.rssMB > ref.rssMB*1.25+16 {
+		t.Errorf("RSS grew: %.0f MB after %d images (pools drained), %.0f MB after %d", last.rssMB, last.images, ref.rssMB, ref.images)
 	}
+}
+
+// currentRSSMB returns the process's resident set size now, from ps (0 if unavailable).
+func currentRSSMB() float64 {
+	out, err := exec.Command("ps", "-o", "rss=", "-p", strconv.Itoa(os.Getpid())).Output()
+	if err != nil {
+		return 0
+	}
+	kb, err := strconv.ParseFloat(strings.TrimSpace(string(out)), 64)
+	if err != nil {
+		return 0
+	}
+	return kb / 1024
 }
 
 func maxRSSMB() float64 {

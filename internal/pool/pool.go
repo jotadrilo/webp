@@ -21,6 +21,22 @@ const MaxMemory = 32 << 20
 // goroutine.
 const IdleTrim = 10 * time.Second
 
+// registry holds every pool, for ReleaseIdle.
+var registry struct {
+	sync.Mutex
+	pools []interface{ trim(time.Duration) }
+}
+
+// ReleaseIdle releases every idle instance of every pool now. It is for tests (the soak test
+// drains the pools to measure what remains); normal use relies on the idle release.
+func ReleaseIdle() {
+	registry.Lock()
+	defer registry.Unlock()
+	for _, p := range registry.pools {
+		p.trim(0)
+	}
+}
+
 type entry[T any] struct {
 	t    T
 	idle time.Duration // since the pool's start, when it was put back
@@ -42,6 +58,9 @@ type Pool[T any] struct {
 func New[T any](newT func() T, memSize func(T) int) *Pool[T] {
 	p := &Pool[T]{max: runtime.GOMAXPROCS(0), newT: newT, memSize: memSize, start: time.Now()}
 	p.armTrim()
+	registry.Lock()
+	registry.pools = append(registry.pools, p)
+	registry.Unlock()
 	return p
 }
 
