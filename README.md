@@ -124,6 +124,11 @@ A weekly workflow proposes each new libwebp, wasi-sdk or wasm2go release as a pu
    branch `update/libwebp` (reused, never a duplicate), with the release notes link, and starts CI
    on it. If generation or the tests fail, it opens or updates an issue with the log instead. It
    can also be started by hand (Actions → Upstream update → Run workflow).
+
+   The job opens the pull request with the workflow's own `GITHUB_TOKEN`, which GitHub allows
+   only when the repository setting "Allow GitHub Actions to create and approve pull requests"
+   (Settings → Actions → General) is on. It is on for this reason alone: the job never approves
+   or merges anything, and default workflow permissions stay read-only.
 2. **Review.** Read the release notes, look over the diff of `internal/gen` and `testdata`, and
    optionally run `make bench` and update [BENCHMARKS.md](BENCHMARKS.md).
 3. **Merge.** Nothing is merged automatically.
