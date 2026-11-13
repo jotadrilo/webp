@@ -1,0 +1,185 @@
+name: Upstream update
+
+# Weekly, for each pinned input of `make generate` (libwebp, wasi-sdk, wasm2go) on its own: if
+# upstream has a newer release, move the pin (scripts/update-toolchain.sh computes the SHA-256s
+# from the downloaded release), regenerate internal/gen, run the tests (cwebp/dwebp byte and pixel
+# parity included) and open a pull request "Update <tool> to <version>" from the branch
+# update/<tool>, reused while the pull request is open. If anything fails, open or update an
+# issue with the log instead. Nothing is merged automatically: a person reviews and merges.
+on:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+    inputs:
+      tool:
+        description: Which input to check
+        type: choice
+        options: [all, libwebp, wasi-sdk, wasm2go]
+        default: all
+
+permissions: {}
+
+jobs:
+  update:
+    strategy:
+      fail-fast: false
+      matrix:
+        tool: ${{ fromJSON((inputs.tool == '' || inputs.tool == 'all') && '["libwebp","wasi-sdk","wasm2go"]' || format('["{0}"]', inputs.tool)) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    concurrency:
+      group: upstream-update-${{ matrix.tool }}
+    permissions:
+      contents: write # push the update/<tool> branch
+      pull-requests: write # open or edit the pull request
+      issues: write # labels, and the issue when the update fails
+      actions: write # start CI on the branch (pushes made with this token start no workflow)
+    env:
+      TOOL: ${{ matrix.tool }}
+      BRANCH: update/${{ matrix.tool }}
+      GH_TOKEN: ${{ github.token }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: Move the pin to the latest release
+        id: bump
+        continue-on-error: true
+        shell: bash
+        run: scripts/update-toolchain.sh "$TOOL" 2>&1 | tee "$RUNNER_TEMP/update.log"
+
+      - name: Skip if the open pull request already has this update
+        id: existing
+        if: steps.bump.outputs.changed == 'true'
+        shell: bash
+        run: |
+          pr=$(gh pr list --head "$BRANCH" --base main --state open --json number --jq '.[0].number // empty')
+          echo "pr=$pr" >> "$GITHUB_OUTPUT"
+          if [[ -n $pr ]] && git fetch --depth=1 origin "$BRANCH" &&
+            git show FETCH_HEAD:internal/gen/toolchain.env | cmp -s - internal/gen/toolchain.env; then
+            echo "pull request #$pr already updates $TOOL with these pins: nothing to do"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Regenerate and test
+        id: build
+        if: steps.bump.outputs.changed == 'true' && steps.existing.outputs.skip != 'true'
+        continue-on-error: true
+        shell: bash
+        run: |
+          {
+            echo "::group::make generate"
+            make generate
+            echo "::endgroup::"
+            if [[ $TOOL == libwebp ]]; then
+              # The fixtures are cwebp's and dwebp's output: a new libwebp writes new ones.
+              echo "::group::make testdata"
+              make testdata
+              echo "::endgroup::"
+            fi
+            make dwebp
+            go vet ./...
+            go test -count=1 ./...
+            go test -count=1 -race -short ./...
+          } 2>&1 | tee -a "$RUNNER_TEMP/update.log"
+
+      - name: Open or update the pull request
+        if: steps.build.outcome == 'success'
+        shell: bash
+        env:
+          FROM: ${{ steps.bump.outputs.from }}
+          TO: ${{ steps.bump.outputs.to }}
+          NOTES: ${{ steps.bump.outputs.notes }}
+          PR: ${{ steps.existing.outputs.pr }}
+        run: |
+          gh label create dependencies --color 0366d6 --description "Updates a dependency" --force
+          gh label create upstream-update --color 5319e7 --description "Opened by the upstream update workflow" --force
+          title="Update $TOOL to $TO"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898183+github-actions[bot]@users.noreply.github.com"
+          git switch -C "$BRANCH"
+          git add -A
+          git commit -q -m "$title" -m "From $FROM. Release notes: $NOTES" -m "Made by $RUN_URL"
+          git push --force origin "$BRANCH"
+          fixtures=""
+          if [[ $TOOL == libwebp ]]; then
+            fixtures="- testdata/ regenerated with the new cwebp and dwebp (\`make testdata\`)"
+          fi
+          cat > "$RUNNER_TEMP/body.md" <<EOF
+          Moves the pinned **$TOOL** from \`$FROM\` to \`$TO\`.
+
+          Release notes: $NOTES
+
+          ## What changed
+
+          - \`internal/gen/toolchain.env\`: the new version, with each SHA-256 computed from the downloaded release
+          - \`internal/gen/{dec,enc}/libwebp.go\` regenerated with \`make generate\`
+          $fixtures
+
+          \`\`\`
+          $(git diff --stat HEAD~1)
+          \`\`\`
+
+          ## Checked by the workflow
+
+          - \`make generate\` from the new pins
+          - \`go vet\`, \`go test ./...\` (cwebp byte parity, dwebp pixel parity, the 2000-image soak) and \`go test -race -short ./...\`
+
+          CI runs on this branch as well (\`make verify-generate\` on Linux amd64 and arm64, the test matrix, lint).
+
+          ## For the reviewer
+
+          - [ ] Read the release notes above
+          - [ ] Look over the diff of \`internal/gen\` (and of \`testdata\`)
+          - [ ] Optionally run \`make bench\` and update BENCHMARKS.md
+          - [ ] After merging, tag a new minor version (see "Updating libwebp" in the README)
+
+          Opened by [the upstream update workflow]($RUN_URL). It is never merged automatically.
+          EOF
+          if [[ -n $PR ]]; then
+            gh pr edit "$PR" --title "$title" --body-file "$RUNNER_TEMP/body.md" --add-label dependencies,upstream-update
+            url=$(gh pr view "$PR" --json url --jq .url)
+          else
+            url=$(gh pr create --base main --head "$BRANCH" --title "$title" --body-file "$RUNNER_TEMP/body.md" \
+              --label dependencies --label upstream-update)
+          fi
+          echo "pull request: $url"
+          gh workflow run ci.yml --ref "$BRANCH"
+          # A failure issue left open from an earlier run is resolved by this pull request.
+          gh issue list --state open --label upstream-update --json number,title \
+            --jq ".[] | select(.title == \"Automated update of $TOOL failed\") | .number" |
+            while read -r n; do gh issue close "$n" --comment "Fixed: $url"; done
+
+      - name: Open or update the issue
+        if: steps.bump.outcome == 'failure' || steps.build.outcome == 'failure'
+        shell: bash
+        env:
+          TO: ${{ steps.bump.outputs.to }}
+        run: |
+          gh label create upstream-update --color 5319e7 --description "Opened by the upstream update workflow" --force
+          title="Automated update of $TOOL failed"
+          {
+            echo "The [weekly upstream update]($RUN_URL) could not update **$TOOL**${TO:+ to \`$TO\`}."
+            echo "Nothing was pushed. The end of the log:"
+            echo
+            echo '<details><summary>log</summary>'
+            echo
+            echo '```'
+            tail -n 300 "$RUNNER_TEMP/update.log" | tail -c 60000
+            echo '```'
+            echo
+            echo '</details>'
+            echo
+            echo "To update by hand: \`scripts/update-toolchain.sh $TOOL\`, \`make generate\`, \`make testdata\` (libwebp only), \`make test\`."
+          } > "$RUNNER_TEMP/issue.md"
+          n=$(gh issue list --state open --label upstream-update --json number,title \
+            --jq ".[] | select(.title == \"$title\") | .number" | head -1)
+          if [[ -n $n ]]; then
+            gh issue comment "$n" --body-file "$RUNNER_TEMP/issue.md"
+          else
+            gh issue create --title "$title" --body-file "$RUNNER_TEMP/issue.md" --label upstream-update
+          fi
+          exit 1

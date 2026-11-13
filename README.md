@@ -110,8 +110,29 @@ from the same source (`make dwebp`):
 - `Decode` output equals `dwebp`'s, pixel for pixel, and `dwebp` decodes what `Encode` writes,
 - lossless round trips are exact (with `Exact`, even under transparent pixels).
 
-A weekly workflow opens an issue when libwebp, wasi-sdk or wasm2go has a newer release.
-Updating is a reviewed change, never an automatic merge.
+A weekly workflow proposes each new libwebp, wasi-sdk or wasm2go release as a pull request (see
+[Updating libwebp](#updating-libwebp)). Updating is a reviewed change, never an automatic merge.
+
+## Updating libwebp
+
+1. **Pull request from the weekly job.** Every Monday,
+   [`upstream-update.yml`](.github/workflows/upstream-update.yml) checks libwebp, wasi-sdk and
+   wasm2go, each on its own. For a new release it runs `scripts/update-toolchain.sh` (the new
+   version and the SHA-256 computed from the downloaded release, in `internal/gen/toolchain.env`),
+   `make generate`, `make testdata` for libwebp, and the tests, including the `cwebp` byte parity
+   and `dwebp` pixel parity. Then it opens a pull request "Update libwebp to X.Y.Z" from the
+   branch `update/libwebp` (reused, never a duplicate), with the release notes link, and starts CI
+   on it. If generation or the tests fail, it opens or updates an issue with the log instead. It
+   can also be started by hand (Actions → Upstream update → Run workflow).
+2. **Review.** Read the release notes, look over the diff of `internal/gen` and `testdata`, and
+   optionally run `make bench` and update [BENCHMARKS.md](BENCHMARKS.md).
+3. **Merge.** Nothing is merged automatically.
+4. **Tag a new minor version** (for example `git tag v0.2.0 && git push origin v0.2.0`).
+   [`release.yml`](.github/workflows/release.yml) then makes the GitHub release, with notes
+   listing the commits since the previous tag.
+
+To do the same by hand: `scripts/update-toolchain.sh libwebp [version]`, `make generate testdata
+test`.
 
 ## Benchmarks
 

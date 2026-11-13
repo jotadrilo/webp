@@ -3,6 +3,9 @@ name: CI
 on:
   push:
   pull_request:
+  # The upstream update workflow starts CI on its branch this way: pushes made with the
+  # workflow token start no workflow.
+  workflow_dispatch:
 
 permissions:
   contents: read
