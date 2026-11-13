@@ -4,7 +4,8 @@
 [![Go Reference](https://pkg.go.dev/badge/github.com/jotadrilo/webp.svg)](https://pkg.go.dev/github.com/jotadrilo/webp)
 
 WebP encoding and decoding in pure Go, built from Google's
-[libwebp](https://chromium.googlesource.com/webm/libwebp) 1.6.0 source (unmodified) compiled to Go.
+[libwebp](https://chromium.googlesource.com/webm/libwebp) source (unmodified) compiled to Go; the
+libwebp release it is built from is pinned in [`internal/gen/toolchain.env`](internal/gen/toolchain.env).
 This is an independent project: it is not made, endorsed or supported by Google or the WebM
 project.
 
