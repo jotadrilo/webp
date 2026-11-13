@@ -23,7 +23,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: ${{ matrix.go }}
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: .cache/dl
           key: dl-${{ hashFiles('internal/gen/toolchain.env') }}
@@ -65,7 +65,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: stable
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: .cache/dl
           key: dl-${{ runner.arch }}-${{ hashFiles('internal/gen/toolchain.env') }}
