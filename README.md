@@ -3,12 +3,14 @@
 [![CI](https://github.com/jotadrilo/webp/actions/workflows/ci.yml/badge.svg)](https://github.com/jotadrilo/webp/actions/workflows/ci.yml)
 [![Go Reference](https://pkg.go.dev/badge/github.com/jotadrilo/webp.svg)](https://pkg.go.dev/github.com/jotadrilo/webp)
 
-Google's official [libwebp](https://chromium.googlesource.com/webm/libwebp) 1.6.0, packaged for
-Go: WebP encoding and decoding in pure Go.
+WebP encoding and decoding in pure Go, built from Google's
+[libwebp](https://chromium.googlesource.com/webm/libwebp) 1.6.0 source (unmodified) compiled to Go.
+This is an independent project: it is not made, endorsed or supported by Google or the WebM
+project.
 
 - **Pure Go, static.** It builds with `CGO_ENABLED=0` into a static binary. No cgo, no shared
   library, no `dlopen`/purego, nothing loaded at run time.
-- **Official libwebp, verifiable.** The Go code is libwebp compiled to WebAssembly with wasi-sdk
+- **Upstream libwebp, verifiable.** The Go code is the unmodified upstream libwebp compiled to WebAssembly with wasi-sdk
   and translated to Go with [wasm2go](https://github.com/ncruces/wasm2go). The libwebp source,
   the compiler and the translator are pinned, and CI regenerates the code and fails if a single
   byte differs from what is committed.

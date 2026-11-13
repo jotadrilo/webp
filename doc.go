@@ -1,6 +1,7 @@
 // Copyright (c) 2026, jotadrilo. BSD-3-Clause (see LICENSE).
 
-// Package webp encodes and decodes WebP images with Google's official libwebp, in pure Go.
+// Package webp encodes and decodes WebP images in pure Go, using the unmodified upstream libwebp
+// source from Google. It is an independent project, not made or endorsed by Google.
 //
 // libwebp (third_party/libwebp, BSD-3-Clause, Copyright (c) 2010 Google Inc.) is compiled to
 // WebAssembly and translated to Go source with wasm2go, so the package needs no cgo, no shared
