@@ -35,7 +35,7 @@ port of libwebp to Go with assembly. See [Benchmarks](#benchmarks).
 go get github.com/jotadrilo/webp
 ```
 
-Requires Go 1.25 or later.
+Requires Go 1.27.4 or later.
 
 ## Usage
 

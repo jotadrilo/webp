@@ -16,7 +16,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest]
-        go: ["1.25.x", stable]
+        go: [stable] # the newest Go only, the one go.mod names
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4

@@ -1,6 +1,6 @@
 module github.com/jotadrilo/webp/bench
 
-go 1.26.4
+go 1.27.4
 
 require (
 	github.com/eringen/gowebper v0.1.2
