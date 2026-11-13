@@ -1,0 +1,11 @@
+                         │ ours-m0-before │            ours-m4-before             │          ours-lossless-before          │         ours-m0-after         │             ours-m4-after             │          ours-lossless-after           │
+                         │     sec/op     │    sec/op     vs base                 │    sec/op     vs base                  │   sec/op     vs base          │    sec/op     vs base                 │    sec/op     vs base                  │
+EncodeThroughput/cpus=18      241.4µ ± 2%   1259.1µ ± 3%  +421.55% (p=0.000 n=10)   4427.5µ ± 3%  +1734.02% (p=0.000 n=10)   242.5µ ± 1%  ~ (p=0.579 n=10)   1275.4µ ± 2%  +428.32% (p=0.000 n=10)   4414.0µ ± 6%  +1728.42% (p=0.000 n=10)
+
+                         │ ours-m0-before │           ours-m4-before           │        ours-lossless-before        │         ours-m0-after         │           ours-m4-after            │        ours-lossless-after         │
+                         │     img/s      │   img/s     vs base                │   img/s     vs base                │    img/s     vs base          │   img/s     vs base                │   img/s     vs base                │
+EncodeThroughput/cpus=18      4142.4 ± 2%   794.2 ± 3%  -80.83% (p=0.000 n=10)   225.9 ± 3%  -94.55% (p=0.000 n=10)   4123.8 ± 1%  ~ (p=0.579 n=10)   784.1 ± 2%  -81.07% (p=0.000 n=10)   226.6 ± 5%  -94.53% (p=0.000 n=10)
+
+                         │ ours-m0-before │            ours-m4-before            │          ours-lossless-before          │         ours-m0-after          │            ours-m4-after             │          ours-lossless-after           │
+                         │   peak-RSS-B   │  peak-RSS-B   vs base                │  peak-RSS-B    vs base                 │  peak-RSS-B   vs base          │  peak-RSS-B   vs base                │  peak-RSS-B    vs base                 │
+EncodeThroughput/cpus=18     206.9Mi ± 2%   257.5Mi ± 5%  +24.42% (p=0.000 n=10)   1567.8Mi ± 3%  +657.58% (p=0.000 n=10)   206.4Mi ± 5%  ~ (p=0.853 n=10)   241.0Mi ± 5%  +16.47% (p=0.000 n=10)   1565.3Mi ± 6%  +656.36% (p=0.000 n=10)

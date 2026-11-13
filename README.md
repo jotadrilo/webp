@@ -21,10 +21,10 @@ Go: WebP encoding and decoding in pure Go.
   the image, and idle instances are released.
 
 What it is not: a port. Nobody rewrote libwebp in Go. It is libwebp itself, so it is exactly as
-correct as libwebp and slower than native C libwebp (roughly 2× in early measurements).
-Expect speed close to [gen2brain/webp](https://github.com/gen2brain/webp), which takes the same
-approach, with much less memory use, and below [gen2brain/vpx](https://github.com/gen2brain/vpx),
-a hand port of libwebp to Go with assembly. See [BENCHMARKS.md](BENCHMARKS.md).
+correct as libwebp, and about 2× slower than native C libwebp. It is 1.2–1.5× faster than
+[gen2brain/webp](https://github.com/gen2brain/webp), which takes the same approach, without its
+per-call allocations, and slower than [gen2brain/vpx](https://github.com/gen2brain/vpx), a hand
+port of libwebp to Go with assembly. See [Benchmarks](#benchmarks).
 
 ## Install
 
@@ -120,10 +120,22 @@ throughput, allocations, GC pauses, peak RSS, output size and quality (SSIM/PSNR
 macOS on one Mac, recorded with each run so it can be repeated. Results, method and the
 optimization log are in [BENCHMARKS.md](BENCHMARKS.md).
 
-The numbers in BENCHMARKS.md are **provisional** for now: they were measured on a shared machine,
-and the comparison tables await a quiet-machine pass. Measured so far: a 384 px thumbnail
-encodes in 2.1 ms (method 0) or 11.8 ms (method 4) and decodes in about 1.1 ms on an Apple M5
-Pro core, with no Go allocation per encode.
+Final results (Apple M5 Pro, macOS 26.3, Go 1.27.4, all 18 CPUs, library defaults; 384 px
+thumbnails; time per image, and as a multiple of native C libwebp measured in the same run):
+
+| | C libwebp | **this package** | gen2brain/webp | gen2brain/vpx | x/image/webp |
+|---|---:|---:|---:|---:|---:|
+| encode, lossy method 0 | 1.61 ms | **3.06 ms (1.90×)** | 4.43 ms (2.75×) | 2.09 ms (1.30×) | – |
+| encode, lossy method 4 | 6.50 ms | **15.5 ms (2.38×)** | 22.1 ms (3.40×) | 8.56 ms (1.32×) | – |
+| encode, lossless | 33.4 ms | **54.2 ms (1.62×)** | 70.0 ms (2.10×) | 22.0 ms (0.66×) | – |
+| decode | 0.51 ms | **1.04 ms (2.03×)** | 1.27 ms (2.47×) | 0.85 ms (1.65×) | 1.36 ms (2.65×) |
+| Go allocation per lossy encode | – | **0 B** | 6.6 MB | 44 KB | – |
+| decoded colors equal to libwebp's dwebp | yes | **yes** | no | no | no |
+| binary size over a bare program (decode / encode) | – | **+2.0 / +4.1 MB** | +4.2 / +5.3 MB | +1.1 / +1.4 MB | +0.5 MB / – |
+
+See [BENCHMARKS.md](BENCHMARKS.md) for throughput, latency percentiles, peak RSS (including a
+24 MP image), quality, the 50,000-image soak, binary sizes and build times, the exact
+environment, and the optimization log.
 
 ## Development
 

@@ -1,0 +1,81 @@
+                                │ ours-m0-before │           ours-m0-after            │
+                                │     sec/op     │   sec/op     vs base               │
+Encode/img=photo/cpus=18             1.941m ± 0%   1.951m ± 0%  +0.53% (p=0.004 n=10)
+Encode/img=flat/cpus=18              1.947m ± 0%   1.958m ± 0%  +0.55% (p=0.000 n=10)
+Encode/img=lineart/cpus=18           2.523m ± 0%   2.529m ± 0%  +0.23% (p=0.002 n=10)
+Encode/img=gradient/cpus=18          1.444m ± 0%   1.453m ± 0%  +0.65% (p=0.000 n=10)
+Encode/img=cutout-alpha/cpus=18      6.245m ± 0%   6.261m ± 0%       ~ (p=0.123 n=10)
+Encode/img=icon-alpha/cpus=18        1.470m ± 0%   1.464m ± 0%  -0.39% (p=0.011 n=10)
+Encode/img=noise/cpus=18             5.779m ± 0%   5.776m ± 0%       ~ (p=0.393 n=10)
+geomean                              2.565m        2.571m       +0.25%
+
+                                │ ours-m0-before │           ours-m0-after            │
+                                │    p50-sec     │   p50-sec    vs base               │
+Encode/img=photo/cpus=18             1.915m ± 0%   1.921m ± 0%  +0.32% (p=0.030 n=10)
+Encode/img=flat/cpus=18              1.935m ± 0%   1.944m ± 0%  +0.49% (p=0.000 n=10)
+Encode/img=lineart/cpus=18           2.507m ± 0%   2.510m ± 0%  +0.12% (p=0.035 n=10)
+Encode/img=gradient/cpus=18          1.437m ± 0%   1.448m ± 0%  +0.70% (p=0.000 n=10)
+Encode/img=cutout-alpha/cpus=18      6.239m ± 0%   6.248m ± 0%       ~ (p=0.218 n=10)
+Encode/img=icon-alpha/cpus=18        1.466m ± 0%   1.459m ± 0%  -0.43% (p=0.009 n=10)
+Encode/img=noise/cpus=18             5.765m ± 0%   5.760m ± 0%       ~ (p=0.393 n=10)
+geomean                              2.551m        2.556m       +0.18%
+
+                                │ ours-m0-before │           ours-m0-after            │
+                                │    p95-sec     │   p95-sec    vs base               │
+Encode/img=photo/cpus=18             2.114m ± 1%   2.117m ± 0%       ~ (p=0.353 n=10)
+Encode/img=flat/cpus=18              2.047m ± 1%   2.059m ± 1%  +0.58% (p=0.023 n=10)
+Encode/img=lineart/cpus=18           2.659m ± 1%   2.668m ± 1%       ~ (p=0.190 n=10)
+Encode/img=gradient/cpus=18          1.474m ± 0%   1.482m ± 1%  +0.54% (p=0.000 n=10)
+Encode/img=cutout-alpha/cpus=18      6.354m ± 1%   6.366m ± 0%  +0.18% (p=0.043 n=10)
+Encode/img=icon-alpha/cpus=18        1.495m ± 0%   1.495m ± 0%       ~ (p=0.592 n=10)
+Encode/img=noise/cpus=18             5.920m ± 0%   5.909m ± 0%       ~ (p=0.143 n=10)
+geomean                              2.665m        2.671m       +0.22%
+
+                                │ ours-m0-before │           ours-m0-after            │
+                                │    p99-sec     │   p99-sec    vs base               │
+Encode/img=photo/cpus=18             2.187m ± 2%   2.206m ± 1%       ~ (p=0.218 n=10)
+Encode/img=flat/cpus=18              2.115m ± 1%   2.127m ± 1%       ~ (p=0.165 n=10)
+Encode/img=lineart/cpus=18           2.724m ± 1%   2.736m ± 1%       ~ (p=0.165 n=10)
+Encode/img=gradient/cpus=18          1.485m ± 0%   1.500m ± 1%  +1.00% (p=0.000 n=10)
+Encode/img=cutout-alpha/cpus=18      6.386m ± 0%   6.395m ± 1%       ~ (p=0.063 n=10)
+Encode/img=icon-alpha/cpus=18        1.528m ± 1%   1.525m ± 1%       ~ (p=0.579 n=10)
+Encode/img=noise/cpus=18             5.977m ± 1%   5.965m ± 1%       ~ (p=0.684 n=10)
+geomean                              2.716m        2.727m       +0.38%
+
+                                │ ours-m0-before │            ours-m0-after             │
+                                │      B/op      │    B/op      vs base                 │
+Encode/img=photo/cpus=18             27.00 ± 11%   26.00 ± 15%       ~ (p=0.535 n=10)
+Encode/img=flat/cpus=18              26.00 ± 15%   26.00 ±  4%       ~ (p=0.336 n=10)
+Encode/img=lineart/cpus=18           17.00 ±  6%   17.00 ±  6%       ~ (p=1.000 n=10)
+Encode/img=gradient/cpus=18          19.00 ±  5%   19.00 ± 16%       ~ (p=0.336 n=10)
+Encode/img=cutout-alpha/cpus=18      20.00 ± 10%   20.00 ±  0%       ~ (p=0.474 n=10)
+Encode/img=icon-alpha/cpus=18        20.00 ±  0%   20.00 ±  0%       ~ (p=1.000 n=10) ¹
+Encode/img=noise/cpus=18             18.00 ± 17%   18.00 ± 17%       ~ (p=1.000 n=10)
+geomean                              20.71         20.60        -0.54%
+¹ all samples are equal
+
+                                │ ours-m0-before  │            ours-m0-after            │
+                                │    allocs/op    │   allocs/op    vs base              │
+Encode/img=photo/cpus=18          100.0m ±    ?       0.0m ±    ?  ~ (p=0.370 n=10)
+Encode/img=flat/cpus=18            0.000 ±    ?      0.000 ±    ?  ~ (p=0.628 n=10)
+Encode/img=lineart/cpus=18        100.0m ±    ?       0.0m ±    ?  ~ (p=0.170 n=10)
+Encode/img=gradient/cpus=18        0.000 ±    ?      0.000 ±    ?  ~ (p=1.000 n=10)
+Encode/img=cutout-alpha/cpus=18   100.0m ± 100%     100.0m ±   0%  ~ (p=0.474 n=10)
+Encode/img=icon-alpha/cpus=18      0.000 ±   0%      0.000 ±   0%  ~ (p=1.000 n=10)
+Encode/img=noise/cpus=18          100.0m ± 100%     100.0m ± 100%  ~ (p=1.000 n=10)
+geomean                                         ¹                  ?                ¹ ²
+¹ summaries must be >0 to compute geomean
+² ratios must be >0 to compute geomean
+
+                                │ ours-m0-before │              ours-m0-after              │
+                                │ gc-pause-ns/op │ gc-pause-ns/op  vs base                 │
+Encode/img=photo/cpus=18            0.000 ± 0%         0.000 ± 0%       ~ (p=1.000 n=10) ¹
+Encode/img=flat/cpus=18             0.000 ± 0%         0.000 ± 0%       ~ (p=1.000 n=10) ¹
+Encode/img=lineart/cpus=18          0.000 ± 0%         0.000 ± 0%       ~ (p=1.000 n=10) ¹
+Encode/img=gradient/cpus=18         0.000 ± 0%         0.000 ± 0%       ~ (p=1.000 n=10) ¹
+Encode/img=cutout-alpha/cpus=18     0.000 ± 0%         0.000 ± 0%       ~ (p=1.000 n=10) ¹
+Encode/img=icon-alpha/cpus=18       0.000 ± 0%         0.000 ± 0%       ~ (p=1.000 n=10) ¹
+Encode/img=noise/cpus=18            0.000 ± 0%         0.000 ± 0%       ~ (p=1.000 n=10) ¹
+geomean                                        ²                   +0.00%                ²
+¹ all samples are equal
+² summaries must be >0 to compute geomean

@@ -1,132 +1,265 @@
 # Benchmarks
 
-> **Provisional.** Every number here was measured on a shared Mac (Apple M5 Pro, 18 cores)
-> while other work was running. The method below limits the damage (a machine-wide lock,
-> interleaved rounds, a load gate, benchstat over ten rounds), but the comparison tables against
-> other implementations are **pending a quiet-machine pass** in the environment below, which
-> will replace all of this.
+**Final** for the reference environment below, measured on 2026-11-13. To compare a change,
+rerun `./bench/run.sh` on a matching machine and diff `bench/results/macos-arm64/`.
 
-## Method
+## Summary
 
-The libraries are compared on their own, in **one environment, repeated the same way every
-time: native macOS on one Mac**, with no containers or VMs. (`bench/docker.sh` runs the same
-harness in pinned Linux containers. It is an optional extra and its numbers are not
-published.) The command is
+Mean time per 384 px thumbnail (single-image latency) and throughput with 18 concurrent jobs, as
+multiples of native C libwebp measured in the same run (lower is better).
 
-```sh
-./bench/run.sh            # = make bench; label macos-arm64; ROUNDS=10 CPUS="1 2 4"
+| | C libwebp | **this package** | gen2brain/webp | gen2brain/vpx | x/image/webp | gowebper |
+|---|---:|---:|---:|---:|---:|---:|
+| encode, lossy method 0 | 1.61 ms | **1.90×** | 2.75× | 1.30× | – | – |
+| encode, lossy method 4 | 6.50 ms | **2.38×** | 3.40× | 1.32× | – | – |
+| encode, lossless | 33.4 ms | **1.62×** | 2.10× | 0.66× | – | 4.51× |
+| decode | 0.51 ms | **2.03×** | 2.47× | 1.65× | 2.65× | – |
+| encode throughput, method 0 | 8995 img/s | **2.24×** | 3.96× | 1.45× | – | – |
+| decode throughput | 27870 img/s | **2.56×** | 4.19× | 1.92× | 3.56× | – |
+| Go allocation per lossy encode | – | **0 B** | 6.6–8.9 MB | 44–157 KB | – | – |
+| same bytes as cwebp / pixels as dwebp | yes | **yes / yes** | yes / no¹ | no / no² | – / no² | no³ / – |
+
+¹ gen2brain/webp v0.6.4 returns every decoded image, lossless included, as `*image.NYCbCrA`,
+so lossless pixels are not preserved and lossy colors go through Go's full-range YCbCr
+conversion: PSNR 28.4 dB against dwebp on opaque lossy images, and a largest difference of 240.
+² Lossy images come back as YCbCr planes, with the same color shift (28.4 dB); lossless is exact.
+gen2brain/vpx is a port with its own encoder: valid output, but not libwebp's bytes (2–14 %
+larger here, at the same or slightly higher quality).
+³ eringen/gowebper writes lossless only. Its output is not lossless (51.7 dB), and libwebp's dwebp
+rejects 2 of its 7 files.
+
+This package is libwebp itself, so its output and quality are exactly libwebp's. It costs about
+2× native C's time, is 1.2–1.5× faster than gen2brain/webp (the same approach) with no
+per-encode allocation, and is slower than gen2brain/vpx (a hand port with assembly, and the only
+implementation here that uses several cores for one image).
+
+## Environment and method
+
+```
+date:        2026-11-13T01:51Z
+command:     ./run.sh macos-arm64  (ROUNDS=10 PHASES="quality rounds big soak size report" SOAK=50000 LOADMAX=9)
+priority:    nice 0 (nice -5 needs root), no QoS clamp, taskpolicy -t 0 -l 0
+model:       Mac17,9
+chip:        Apple M5 Pro; 6 Super + 12 Performance cores, 48 GB
+macOS:       26.3.2 (25D2150)
+power:       AC Power; 100%; charged; 0:00 remaining present: true
+power mode:  powermode=0 
+load before: 2.44 3.34 3.97
+go:          go version go1.27.4 darwin/arm64
+cc:          Apple clang version 21.0.0 (clang-2100.1.1.101)
+this repo:   703828b
+libwebp:     1.6.0 (C baseline, dwebp/cwebp)
+Go packages: github.com/gen2brain/webp@v0.6.4 github.com/gen2brain/vpx@v0.2.2 golang.org/x/image@v0.47.0 github.com/eringen/gowebper@v0.1.2 
+config:      GOMAXPROCS unset (18 CPUs), library defaults, throughput with 18 jobs; 10 interleaved rounds; load gate < 9
 ```
 
-and `bench/results/<label>/env.txt` records what a later run must match: the Mac model
-(`hw.model`), the chip and its core counts per performance level (`hw.perflevel0/1`), memory,
-the macOS version and build (`sw_vers`), power source, charge and power mode (`pmset -g batt`,
-`pmset -g`), the process priority, the load average before the run (and `load.txt` the load at
-each round), the Go and C compiler versions, this repository's commit, and every compared
-library's version. The processes run at the default priority with no QoS clamp, so macOS keeps
-them on performance cores like any foreground work. They never run under `taskpolicy -c
-utility/background`. Run as root, the script raises them to `nice -5`. CPU counts 1, 2 and 4 are
-set through `GOMAXPROCS` (for the C harness, its thread count, in one process).
+The 1-minute load during the ten rounds: min 2.41, median 5.58, max 8.88. Other work (builds,
+editors) ran on the machine, but no other benchmark did: every timed process held the
+machine-wide lock. The soak, binary-size and report phases ran afterwards at commit `0508ea6`
+(only the soak test's check changed). Command:
 
-- **Implementations:** native C libwebp 1.6.0 (`bench/c/cbench.c`, the ceiling, built from the
-  same pinned source with its NEON/SSE2 code and threads), this package, gen2brain/webp v0.6.4
-  (built with `-tags nodynamic`, so that it always uses its WASM and never a system libwebp),
-  gen2brain/vpx v0.2.2, golang.org/x/image/webp v0.47.0 (decoder only), and eringen/gowebper
-  v0.1.2 (lossless encoder only).
-- **Settings:** lossy quality 80 at method 0 (thumbnails) and 4 (libwebp's default), and
-  lossless at each package's default effort.
-- **Inputs:** seven synthetic 384 px thumbnails (`internal/testimg`: photo-like, flat, line art,
-  gradient, noise, and two with alpha) and a 24 MP photo-like image. Decoders get the
-  thumbnails encoded by libwebp's `cwebp`, lossy and lossless.
-- **Isolation:** each implementation runs in its own process, so its allocations, GC and peak
-  RSS are its own. Implementations are interleaved in rounds (C, A, B, …, C, A, B, …; ten
-  rounds). Every process run holds the machine-wide lock `/tmp/jotadrilo-bench.lock`, so no two
-  benchmarks share the machine, and starts only when the 1-minute load is below half the cores.
-  One Go toolchain (`GOTOOLCHAIN=go1.27.4`) builds everything. The load, CPU model and versions
-  are recorded with each run.
-- **Per CPU count N:** single-image latency with `GOMAXPROCS=N` (C: N threads allowed within one
-  image), so an implementation that parallelizes one image gains here. Throughput runs N
-  concurrent workers for one second; scaling is that throughput over N times the 1-CPU one.
-  Implementations that use more than one core per image: gen2brain/vpx lossy encoding (its
-  default `Threads: 0` = GOMAXPROCS) and C libwebp with threads. This package, gen2brain/webp,
-  x/image and gowebper use one.
-- **Metrics:** median over rounds of each image's mean time, p50/p95/p99, bytes and objects
-  allocated per operation, GC pause per operation, peak RSS, output bytes, SSIM (luma) and PSNR
-  (RGB), both composited over white and scored through libwebp's `dwebp`, whether alpha is kept
-  exactly, and for decoders, the difference from `dwebp`'s pixels. Ratios are to C libwebp
-  measured in the same run. `benchstat` gives confidence intervals and significance
-  (`bench/results/<label>/benchstat-*.txt`).
+```sh
+./bench/run.sh macos-arm64     # = make bench; ROUNDS=10 SOAK=50000 by default
+```
+
+- **One configuration**, the machine as it is: native macOS, `GOMAXPROCS` unset (all 18 CPUs),
+  every library at its defaults. C libwebp uses no threads within one image (its default, like
+  `cwebp`/`dwebp` without `-mt`). gen2brain/vpx codes a lossy image over GOMAXPROCS goroutines by
+  default, so it is the only implementation that uses several cores per image. Throughput runs
+  as many concurrent jobs as CPUs (18).
+- **Implementations:** native C libwebp 1.6.0 (`bench/c/cbench.c`, built from the same pinned
+  source with its NEON code, `-O2`), this package, gen2brain/webp v0.6.4 (`-tags nodynamic`: its
+  WASM, never a system libwebp), gen2brain/vpx v0.2.2, golang.org/x/image/webp v0.47.0 (decoder
+  only), eringen/gowebper v0.1.2 (lossless encoder only).
+- **Settings:** lossy quality 80 at method 0 (thumbnails) and 4 (libwebp's default), lossless at
+  the default effort.
+- **Inputs:** seven synthetic 384 px thumbnails from `internal/testimg` (photo-like, flat, line
+  art, gradient, noise, and two with alpha) and a 24 MP photo-like image. Decoders get the
+  thumbnails encoded by libwebp's `cwebp`, lossy (q80 m4) and lossless.
+- **Statistics:** each implementation runs in its own process (its allocations, GC and RSS are
+  its own), interleaved in ten rounds (C, A, B, …, C, A, B, …). Each process holds the machine
+  lock `/tmp/jotadrilo-bench.lock` and starts only when the 1-minute load is below 9. Priority is
+  the default with no QoS clamp, plus `taskpolicy -t 0 -l 0` (`nice -5` needs root). One Go
+  toolchain builds everything. Tables give the median over rounds of each image's mean time;
+  `benchstat` gives confidence intervals and significance with C as the base column
+  (`bench/results/macos-arm64/benchstat-*.txt`).
+- **Quality:** output decoded by libwebp's `dwebp`; SSIM on luma and PSNR on RGB, both composited
+  over white; alpha compared exactly. Decoders are compared with `dwebp`'s pixels in the colors a
+  viewer sees (premultiplied, so RGB under fully transparent pixels does not count).
 
 ## Results
 
-*Pending the quiet-machine pass* (`bench/results/macos-arm64/report.md` and `env.txt`).
+#### Encode: Lossy, quality 80, method 0 (thumbnail setting)
 
-Reference environment (for the pass): Mac17,9, Apple M5 Pro (6 Super + 12 Performance cores,
-48 GB), macOS 26.3.2 (25D2150), on AC power at 100 %, power mode 0 (automatic, no low-power
-mode), Go 1.27.4, gen2brain/webp v0.6.4, gen2brain/vpx v0.2.2, golang.org/x/image v0.47.0,
-eringen/gowebper v0.1.2, C libwebp 1.6.0.
+Single-image latency: mean over the 7 thumbnails of each one's median time across rounds (ms); × C is the ratio to native libwebp measured in the same run.
 
-An earlier exploratory run on the same Mac (the prototype this package started from, without
-the lock, mean over nine thumbnails, method 0, q80) gave C libwebp 1.85 ms, gen2brain/vpx
-2.73 ms, the prototype 3.92 ms (47 KB allocated per encode) and gen2brain/webp 5.18 ms
-(5.6 MB). The package's own `go test -bench` (one 384 × 256 photo, `GOMAXPROCS=1`) now gives
-2.1 ms (method 0), 11.8 ms (method 4), 1.06 ms (lossy decode) and 1.3 ms (lossless decode),
-with **0 B allocated per encode** and only the image per decode.
+| implementation | ms/image (18 CPUs) | × C | p50 / p95 / p99 ms | alloc KB/op | GC pause µs/op | output KB | mean SSIM | mean PSNR dB | alpha exact | errors |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| c-libwebp-m0 | 1.61 | 1.00× | 1.60 / 1.66 / 1.74 | – | – | 112.3 | 0.9661 | 36.49 | yes | 0 |
+| vpx-m0 | 2.09 | 1.30× | 2.08 / 2.14 / 2.24 | 44 | 0 | 117.8 | 0.9663 | 36.49 | yes | 0 |
+| ours-m0 | 3.06 | 1.90× | 3.05 / 3.17 / 3.22 | 0 | 0 | 112.3 | 0.9661 | 36.49 | yes | 0 |
+| gen2brain-m0 | 4.43 | 2.75× | 4.42 / 4.61 / 4.71 | 6587 | 26 | 112.3 | 0.9661 | 36.49 | yes | 0 |
+
+#### Encode: Lossy, quality 80, method 4 (libwebp's default method)
+
+Single-image latency: mean over the 7 thumbnails of each one's median time across rounds (ms); × C is the ratio to native libwebp measured in the same run.
+
+| implementation | ms/image (18 CPUs) | × C | p50 / p95 / p99 ms | alloc KB/op | GC pause µs/op | output KB | mean SSIM | mean PSNR dB | alpha exact | errors |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| c-libwebp-m4 | 6.50 | 1.00× | 6.48 / 6.63 / 6.68 | – | – | 102.9 | 0.9665 | 36.48 | yes | 0 |
+| vpx-m4 | 8.56 | 1.32× | 8.54 / 8.69 / 8.77 | 157 | 0 | 117.6 | 0.9683 | 36.65 | yes | 0 |
+| ours-m4 | 15.5 | 2.38× | 15.4 / 15.6 / 15.7 | 0 | 0 | 102.9 | 0.9665 | 36.48 | yes | 0 |
+| gen2brain-m4 | 22.1 | 3.40× | 22.1 / 22.4 / 22.5 | 8874 | 34 | 102.9 | 0.9665 | 36.48 | yes | 0 |
+
+#### Encode: Lossless, default effort
+
+Single-image latency: mean over the 7 thumbnails of each one's median time across rounds (ms); × C is the ratio to native libwebp measured in the same run.
+
+| implementation | ms/image (18 CPUs) | × C | p50 / p95 / p99 ms | alloc KB/op | GC pause µs/op | output KB | mean SSIM | mean PSNR dB | alpha exact | errors |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| vpx-lossless | 22.0 | 0.66× | 21.9 / 22.5 / 22.5 | 1096 | 2 | 529.4 | 1.0000 | 99.00 | yes | 0 |
+| c-libwebp-lossless | 33.4 | 1.00× | 33.4 / 33.5 / 33.6 | – | – | 517.0 | 1.0000 | 99.00 | yes | 0 |
+| ours-lossless | 54.2 | 1.62× | 54.0 / 54.9 / 55.0 | 12664 | 8 | 517.0 | 1.0000 | 99.00 | yes | 0 |
+| gen2brain-lossless | 70.0 | 2.10× | 69.8 / 71.0 / 71.0 | 52003 | 45 | 517.0 | 1.0000 | 99.00 | yes | 0 |
+| gowebper-lossless | 151 | 4.51× | 151 / 151 / 151 | 7235 | 30 | 669.5 | 0.9829 | 51.65 | yes | 2 |
+
+#### Decode
+
+The 14 inputs are the thumbnails encoded by libwebp's cwebp, lossy (q80 m4) and lossless. Agreement with dwebp, in the colors a viewer sees (premultiplied, so the RGB under fully transparent pixels does not count): the largest per-channel difference from libwebp's own decoding over all inputs, and the mean PSNR against it on the opaque lossy inputs and on the lossy inputs with alpha (99: identical).
+
+| implementation | ms/image (18 CPUs) | × C | p50 / p95 / p99 ms | alloc KB/op | GC pause µs/op | max diff vs dwebp | PSNR vs dwebp, opaque lossy | PSNR vs dwebp, lossy with alpha | errors |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| c-libwebp | 0.51 | 1.00× | 0.51 / 0.54 / 0.56 | – | – | 0 (it is dwebp's decoder) | 99 | 99 | 0 |
+| vpx | 0.85 | 1.65× | 0.84 / 0.92 / 0.95 | 391 | 5 | 89 | 28.40 | 34.49 | 0 |
+| ours | 1.04 | 2.03× | 1.03 / 1.11 / 1.16 | 399 | 4 | 0 | 99.00 | 99.00 | 0 |
+| gen2brain | 1.27 | 2.47× | 1.26 / 1.35 / 1.40 | 1751 | 18 | 240 | 28.40 | 34.49 | 0 |
+| ximage | 1.36 | 2.65× | 1.34 / 1.46 / 1.52 | 415 | 5 | 89 | 28.40 | 34.49 | 0 |
+
+#### Encode: throughput with as many concurrent jobs as CPUs
+
+Images per second over the thumbnails, one job per CPU; × C is native libwebp's throughput over this one's.
+
+| implementation | img/s (18 jobs) | × C | peak RSS MB |
+|---|---:|---:|---:|
+| c-libwebp-m0 | 8995 | 1.00× | 55 |
+| vpx-m0 | 6196 | 1.45× | 359 |
+| ours-m0 | 4018 | 2.24× | 217 |
+| gen2brain-m0 | 2270 | 3.96× | 314 |
+| c-libwebp-m4 | 2175 | 1.00× | 91 |
+| vpx-m4 | 1591 | 1.37× | 422 |
+| ours-m4 | 756 | 2.88× | 251 |
+| vpx-lossless | 602 | 0.67× | 449 |
+| gen2brain-m4 | 484 | 4.50× | 318 |
+| c-libwebp-lossless | 403 | 1.00× | 661 |
+| ours-lossless | 222 | 1.81× | 1680 |
+| gen2brain-lossless | 150 | 2.68× | 1240 |
+| gowebper-lossless | 28 | 14.57× | 171 |
+
+#### Decode: throughput with as many concurrent jobs as CPUs
+
+Images per second over the thumbnails, one job per CPU; × C is native libwebp's throughput over this one's.
+
+| implementation | img/s (18 jobs) | × C | peak RSS MB |
+|---|---:|---:|---:|
+| c-libwebp | 27870 | 1.00× | 36 |
+| vpx | 14504 | 1.92× | 128 |
+| ours | 10869 | 2.56× | 109 |
+| ximage | 7834 | 3.56× | 62 |
+| gen2brain | 6645 | 4.19× | 124 |
+
+#### One 24 MP image (6000 × 4000)
+
+Time of one encode or decode after a warm-up, and the peak RSS of the process above what it held before (the 96 MB RGBA source of an encode is in the baseline).
+
+| operation | implementation | time ms | peak RSS above baseline MB |
+|---|---|---:|---:|
+| Encode | c-libwebp-m0 | 195 | 39 |
+| Encode | vpx-m0 | 305 | 739 |
+| Encode | ours-m0 | 456 | 134 |
+| Encode | gen2brain-m0 | 658 | 598 |
+| Encode | c-libwebp-lossless | 8637 | 711 |
+| Encode | vpx-lossless | 8773 | 2424 |
+| Encode | ours-lossless | 12070 | 760 |
+| Encode | gen2brain-lossless | 15715 | 2789 |
+| Decode | vpx | 69.3 | 145 |
+| Decode | c-libwebp | 69.4 | 92 |
+| Decode | gen2brain | 212 | 138 |
+| Decode | ximage | 222 | 37 |
+| Decode | ours | 249 | 102 |
 
 ## Memory
 
-### Soak: thousands of images
+### Soak: 50,000 images
 
-`TestSoak` encodes and decodes mixed images (1 px to 640 px, every kind, with and without
-alpha, lossy and lossless) with concurrent bursts of 4 × GOMAXPROCS goroutines, and samples
-the heap after a GC. It fails if the heap or the peak RSS grows after the warm-up. CI runs 2000
-images on every push; `bench/run.sh` runs 50,000 and saves the heap profile diff between
-image 1000 and image 10,000 (`bench/results/<label>/soak-heap-diff.txt`). The `goleak` check
-in `TestMain` fails if any goroutine is left behind.
+`TestSoak` encodes and decodes 50,000 mixed images (1 px to 640 px, every kind, with and without
+alpha, lossy and lossless) with a burst of 4 × GOMAXPROCS concurrent goroutines every 5,000
+images. Every 1,000 images it collects garbage and records the heap. Then it releases every idle
+pooled instance, collects again, returns freed memory to the OS, and records the drained heap and
+the RSS. The drained heap is what would remain if nothing leaked. It must stay flat, and does:
 
-The soak found one real problem, now fixed. The pool was a FIFO channel, so sequential calls
-rotated through every idle instance, and each grew to fit the largest image. The heap went from
-25 MB to 184 MB over 2000 images and kept climbing. As a stack (LIFO), sequential calls reuse
-one warm instance and the others go cold and are released 10 s after their last use:
+| images | 1,000 | 5,000 | 10,000 | 20,000 | 30,000 | 40,000 | 50,000 |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| heap in use, pools as they are, MB | 24.6 | 104.3 | 77.1 | 93.1 | 88.9 | 81.5 | 86.6 |
+| heap in use, pools drained, MB | 15.17 | 15.41 | 15.43 | 15.51 | 15.59 | 15.65 | 15.67 |
+| heap objects, pools drained | 0.6k | 0.9k | 1.0k | 1.2k | 1.4k | 1.5k | 1.6k |
+| RSS, MB | 67 | 366 | 366 | 367 | 367 | 368 | 402 |
 
-| images | 100 | 200 (after a burst of 72 goroutines) | 500 | 1000 | 1500 | 2000 |
-|---|---:|---:|---:|---:|---:|---:|
-| FIFO pool: heap in use MB | 24.7 | – | 24.7 | 117.5 (burst) | 167.7 | 184.3 |
-| LIFO pool: heap in use MB | 24.7 | 87.5 | 87.5 | 87.5 | 87.5 | 87.5 |
-| LIFO pool: heap objects | 0.7k | 2.6k | 2.6k | 2.7k | 2.6k | 2.7k |
+(The pools keep up to 18 encoder and 18 decoder instances after a burst, sized by the images
+they last served; the series is `bench/results/macos-arm64/soak.csv`.) The heap-profile diff
+between image 1,000 and image 10,000 (`soak-heap-diff.txt`) holds 2.5 MB, all in the Go runtime
+(OS threads and timers for the bursts), and nothing from this package. CI runs a 2,000-image
+soak on every push, and `goleak` checks that no goroutine is left.
 
-(18 cores: after the burst the pool keeps up to 18 encoder and 18 decoder instances; they are
-released once idle.) The 50,000-image series is pending the benchmark window.
+The soak found two problems, both fixed. First, the pool was a FIFO, so sequential calls
+rotated through every idle instance and grew all of them: the heap went from 25 MB to 184 MB in
+2,000 images. It is now a stack. Second, an up-front memory reserve for small lossless encodes
+kept 300 MB pooled after a burst. The reserve now applies only above the pool's 32 MB bound.
 
 ### One 24 MP image
 
-Peak RSS of the process above its baseline (the 96 MB RGBA source of an encode is in the
-baseline), 1 CPU, one run each (RSS does not depend on the machine's load):
+Above, in the last results table: this package's peak RSS above baseline is 134 MB for a lossy
+encode (C: 39 MB; gen2brain/webp: 598 MB; gen2brain/vpx: 739 MB), 760 MB for a lossless one
+(C: 711 MB; the others 2.4–2.8 GB) and 102 MB for a decode (C: 92 MB). Its 24 MP decode is
+slower than gen2brain/webp's and x/image's because they return YCbCr planes, skipping libwebp's
+RGB conversion (and getting the colors wrong).
 
-| operation | C libwebp | this package, first version | after the changes below |
+### The last memory changes, before and after
+
+The same harness, built against the library before (`00e8228`) and after the memory reserve,
+the zero-copy large decode and the strip import, interleaved, ten rounds
+(`bench/results/macos-arm64/before-after/`):
+
+| | before | after | change |
 |---|---:|---:|---:|
-| lossy encode, method 0 | 39 MB | 237 MB | 152 MB, then strip import (pending) |
-| lossless encode | 711 MB | 3071 MB | 759 MB |
-| lossy decode | 92 MB | 192 MB | 100 MB |
+| thumbnail time, method 0 / method 4 / lossless / decode | | | +0.25 % / +0.34 % / −0.33 % / +0.19 %, none significant |
+| throughput, method 0 / method 4 / lossless | 4142 / 794 / 226 img/s | 4124 / 784 / 227 img/s | not significant |
+| throughput peak RSS, method 0 / method 4 / lossless | 207 / 258 / 1568 MiB | 206 / 241 / 1565 MiB | ~ / −6 % / ~ |
+| 24 MP lossy encode, peak RSS above baseline | 238 MB | 134 MB | −44 % |
+| 24 MP lossless encode | 2268 MB | 760 MB | −66 % |
+| 24 MP decode | 193 MB | 102 MB | −47 % |
 
 ## Binary size and build time
 
-Each half links only its own libwebp module (one module would keep all of libwebp, because
-every function sits in the module's function table and the linker cannot drop any).
-`bench/size.sh` builds a minimal program per library and operation (`CGO_ENABLED=0`,
-`-trimpath`) and reports the delta over a program that uses only the standard `image` package,
-plus the build time with an empty build cache. First run, against a baseline that also imported
-`image/png` (2.7 MB) and with the decoder still at `-O3`:
+A minimal program per library and operation (`bench/size.sh`: `CGO_ENABLED=0`, `-trimpath`),
+against a baseline that uses only the standard `image` package. Build time is the faster of two
+builds, each with an empty build cache:
 
-| program | over baseline |
-|---|---:|
-| `webp/decode` (this package, decoder only) | +1.47 MB |
-| `webp/encode` (encoder only) | +3.14 MB |
-| `webp` (both) | +4.78 MB |
-| gen2brain/webp, decode / encode | +3.31 MB / +4.42 MB |
-| gen2brain/vpx, decode / encode | +0.28 MB / +0.63 MB |
+| program | binary | over baseline | clean build s | over baseline |
+|---|---:|---:|---:|---:|
+| baseline (image only) | 1.8 MB | – | 1.0 | – |
+| ours-decode | 3.8 MB | +2.01 MB | 1.7 | +0.7 |
+| ours-encode | 5.9 MB | +4.06 MB | 2.7 | +1.7 |
+| ours-both | 7.3 MB | +5.43 MB | 2.8 | +1.8 |
+| gen2brain-decode | 6.0 MB | +4.15 MB | 2.9 | +1.9 |
+| gen2brain-encode | 7.1 MB | +5.28 MB | 2.9 | +1.9 |
+| vpx-decode | 2.9 MB | +1.06 MB | 1.4 | +0.4 |
+| vpx-encode | 3.2 MB | +1.41 MB | 1.4 | +0.4 |
+| ximage-decode | 2.4 MB | +0.53 MB | 1.2 | +0.2 |
+| gowebper-encode | 2.0 MB | +0.18 MB | 1.2 | +0.2 |
 
-With the decoder at `-O2` (below), the decode-only program is 0.28 MB smaller. The full table
-(bare baseline, build times) is pending the benchmark window.
+`webp/decode` and `webp/encode` link only their half of libwebp. One module for both would keep
+all of it, because every function sits in the module's function table and the linker can drop
+none.
 
 ## Build flags
 
@@ -190,13 +323,20 @@ What was tried, in order, and kept only when it paid:
    across instances. Kept.
 8. **Memory reserved once per large encode**: the module's memory used to grow step by step,
    and each step reallocated and copied all of it, leaving the old copy as garbage until the
-   next GC. Peak RSS for a 24 MP lossless encode fell from 3.07 GB to 0.76 GB (C: 0.71 GB), and
-   for a lossy one from 237 MB to 152 MB. Kept.
+   next GC. 24 MP lossless: 2.27 GB → 0.76 GB peak above baseline (C: 0.71 GB). Kept, only
+   above the pool's 32 MB bound: below it, the soak showed that reserving only inflated pooled
+   instances.
 9. **Strip import**: the pixels are no longer copied whole into the module. Lossy pixels stream
    through a 32-row buffer into libwebp's own RGBA import, which is exact because libwebp
    converts two rows at a time. Lossless pixels go straight into libwebp's ARGB picture. The
    output is still `cwebp`'s, byte for byte (tested at strip boundaries, odd heights and partial
-   alpha). Its time and RSS effect: *pending the benchmark window*.
+   alpha). With 8: 24 MP lossy encode 238 MB → 134 MB above baseline (C: 39 MB, which reads the
+   caller's pixels directly), and no measurable time change.
 10. **Zero-copy large decodes**: an image of 8 MB or more, decoded on a module that holds little
     else, keeps the module's memory as its pixels. The module is discarded, as it would be
-    anyway once it outgrows the pool. 24 MP decode peak: 192 MB → 100 MB (C: 92 MB). Kept.
+    anyway once it outgrows the pool. 24 MP decode peak: 193 MB → 102 MB (C: 92 MB), same time.
+    Kept.
+11. **The benchmark's verdict on what is left:** a thumbnail costs about 2× native C (lossless
+    1.6×). The remaining gap is wasm2go's translation of libwebp's scalar C: no SIMD, indirect
+    calls through a function table, and bounds-checked memory. None of these is a knob left to
+    turn here. Faster would need a port, as gen2brain/vpx does.

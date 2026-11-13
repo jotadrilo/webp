@@ -1,0 +1,29 @@
+File: webp.test
+Type: inuse_space
+Time: 2026-11-13 03:23:37 CET
+Showing nodes accounting for 2564.01kB, 100% of 2564.01kB total
+      flat  flat%   sum%        cum   cum%
+ 2564.01kB   100%   100%  2564.01kB   100%  runtime.mallocgc
+         0     0%   100%   512.01kB 19.97%  runtime.(*scavengerState).sleep
+         0     0%   100%   512.01kB 19.97%  runtime.(*timer).maybeAdd
+         0     0%   100%   512.01kB 19.97%  runtime.(*timer).modify
+         0     0%   100%   512.01kB 19.97%  runtime.(*timer).reset (inline)
+         0     0%   100%   512.01kB 19.97%  runtime.(*timers).addHeap
+         0     0%   100%     2052kB 80.03%  runtime.allocm
+         0     0%   100%   512.01kB 19.97%  runtime.bgscavenge
+         0     0%   100%      513kB 20.01%  runtime.gopreempt_m (inline)
+         0     0%   100%      513kB 20.01%  runtime.goschedImpl
+         0     0%   100%   512.01kB 19.97%  runtime.growslice
+         0     0%   100%      513kB 20.01%  runtime.mcall
+         0     0%   100%      513kB 20.01%  runtime.morestack
+         0     0%   100%     1026kB 40.02%  runtime.mstart
+         0     0%   100%     1026kB 40.02%  runtime.mstart0
+         0     0%   100%     1026kB 40.02%  runtime.mstart1
+         0     0%   100%     2052kB 80.03%  runtime.newm
+         0     0%   100%     2052kB 80.03%  runtime.newobject
+         0     0%   100%      513kB 20.01%  runtime.newstack
+         0     0%   100%      513kB 20.01%  runtime.park_m
+         0     0%   100%     2052kB 80.03%  runtime.resetspinning
+         0     0%   100%     2052kB 80.03%  runtime.schedule
+         0     0%   100%     2052kB 80.03%  runtime.startm
+         0     0%   100%     2052kB 80.03%  runtime.wakep

@@ -1,0 +1,10 @@
+# cpus 18 round 1 01:51:16 load 2.41 3.32 3.96
+# cpus 18 round 2 01:52:37 load 7.59 4.52 4.34
+# cpus 18 round 3 01:53:57 load 8.88 5.43 4.69
+# cpus 18 round 4 01:55:17 load 6.49 5.48 4.77
+# cpus 18 round 5 01:56:38 load 5.51 5.55 4.87
+# cpus 18 round 6 01:57:58 load 4.14 5.20 4.80
+# cpus 18 round 7 01:59:18 load 3.74 4.79 4.68
+# cpus 18 round 8 02:00:39 load 4.17 4.81 4.70
+# cpus 18 round 9 02:01:59 load 5.58 5.23 4.88
+# cpus 18 round 10 02:03:20 load 6.45 5.75 5.11

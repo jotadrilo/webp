@@ -1,0 +1,126 @@
+                                         │ ours-before │             ours-after             │
+                                         │   sec/op    │   sec/op     vs base               │
+Decode/img=photo-lossy/cpus=18             986.5µ ± 1%   989.3µ ± 1%       ~ (p=0.529 n=10)
+Decode/img=photo-lossless/cpus=18          1.290m ± 0%   1.295m ± 0%       ~ (p=0.075 n=10)
+Decode/img=flat-lossy/cpus=18              693.0µ ± 0%   692.8µ ± 0%       ~ (p=0.796 n=10)
+Decode/img=flat-lossless/cpus=18           324.6µ ± 1%   324.9µ ± 0%       ~ (p=0.105 n=10)
+Decode/img=lineart-lossy/cpus=18           1.061m ± 0%   1.060m ± 0%       ~ (p=0.436 n=10)
+Decode/img=lineart-lossless/cpus=18        349.7µ ± 0%   349.7µ ± 0%       ~ (p=0.684 n=10)
+Decode/img=gradient-lossy/cpus=18          682.1µ ± 0%   681.4µ ± 0%       ~ (p=0.218 n=10)
+Decode/img=gradient-lossless/cpus=18       532.0µ ± 1%   540.3µ ± 2%  +1.57% (p=0.035 n=10)
+Decode/img=cutout-alpha-lossy/cpus=18      1.922m ± 1%   1.918m ± 1%       ~ (p=0.353 n=10)
+Decode/img=cutout-alpha-lossless/cpus=18   1.984m ± 0%   2.000m ± 1%  +0.79% (p=0.002 n=10)
+Decode/img=icon-alpha-lossy/cpus=18        422.9µ ± 0%   422.8µ ± 0%       ~ (p=0.529 n=10)
+Decode/img=icon-alpha-lossless/cpus=18     177.1µ ± 0%   177.3µ ± 0%       ~ (p=0.052 n=10)
+Decode/img=noise-lossy/cpus=18             3.360m ± 0%   3.359m ± 0%       ~ (p=1.000 n=10)
+Decode/img=noise-lossless/cpus=18          757.0µ ± 0%   757.2µ ± 0%       ~ (p=0.436 n=10)
+geomean                                    774.6µ        776.1µ       +0.19%
+
+                                         │ ours-before │             ours-after             │
+                                         │   p50-sec   │   p50-sec    vs base               │
+Decode/img=photo-lossy/cpus=18             973.5µ ± 1%   977.9µ ± 1%       ~ (p=0.315 n=10)
+Decode/img=photo-lossless/cpus=18          1.275m ± 0%   1.279m ± 1%  +0.34% (p=0.043 n=10)
+Decode/img=flat-lossy/cpus=18              676.8µ ± 0%   677.5µ ± 0%       ~ (p=0.739 n=10)
+Decode/img=flat-lossless/cpus=18           310.8µ ± 1%   311.2µ ± 0%  +0.13% (p=0.033 n=10)
+Decode/img=lineart-lossy/cpus=18           1.044m ± 0%   1.042m ± 0%       ~ (p=0.579 n=10)
+Decode/img=lineart-lossless/cpus=18        335.0µ ± 1%   335.0µ ± 0%       ~ (p=0.515 n=10)
+Decode/img=gradient-lossy/cpus=18          670.1µ ± 0%   668.8µ ± 0%       ~ (p=0.172 n=10)
+Decode/img=gradient-lossless/cpus=18       531.6µ ± 4%   531.1µ ± 3%       ~ (p=0.529 n=10)
+Decode/img=cutout-alpha-lossy/cpus=18      1.916m ± 0%   1.911m ± 1%       ~ (p=0.315 n=10)
+Decode/img=cutout-alpha-lossless/cpus=18   1.969m ± 1%   1.984m ± 1%  +0.81% (p=0.009 n=10)
+Decode/img=icon-alpha-lossy/cpus=18        413.4µ ± 0%   413.1µ ± 0%       ~ (p=0.289 n=10)
+Decode/img=icon-alpha-lossless/cpus=18     168.2µ ± 0%   168.3µ ± 0%       ~ (p=0.126 n=10)
+Decode/img=noise-lossy/cpus=18             3.352m ± 0%   3.349m ± 0%       ~ (p=0.669 n=10)
+Decode/img=noise-lossless/cpus=18          743.2µ ± 0%   744.1µ ± 0%       ~ (p=0.065 n=10)
+geomean                                    759.5µ        760.1µ       +0.08%
+
+                                         │ ours-before │             ours-after             │
+                                         │   p95-sec   │   p95-sec    vs base               │
+Decode/img=photo-lossy/cpus=18             1.103m ± 1%   1.102m ± 1%       ~ (p=0.796 n=10)
+Decode/img=photo-lossless/cpus=18          1.361m ± 1%   1.364m ± 1%       ~ (p=0.481 n=10)
+Decode/img=flat-lossy/cpus=18              745.3µ ± 1%   744.5µ ± 0%       ~ (p=0.726 n=10)
+Decode/img=flat-lossless/cpus=18           370.8µ ± 1%   371.8µ ± 0%       ~ (p=0.148 n=10)
+Decode/img=lineart-lossy/cpus=18           1.122m ± 1%   1.116m ± 1%       ~ (p=0.165 n=10)
+Decode/img=lineart-lossless/cpus=18        396.9µ ± 1%   397.1µ ± 0%       ~ (p=0.739 n=10)
+Decode/img=gradient-lossy/cpus=18          733.7µ ± 1%   732.1µ ± 0%       ~ (p=0.218 n=10)
+Decode/img=gradient-lossless/cpus=18       588.5µ ± 1%   596.2µ ± 2%       ~ (p=0.218 n=10)
+Decode/img=cutout-alpha-lossy/cpus=18      2.081m ± 1%   2.077m ± 1%       ~ (p=0.280 n=10)
+Decode/img=cutout-alpha-lossless/cpus=18   2.072m ± 1%   2.091m ± 1%  +0.91% (p=0.001 n=10)
+Decode/img=icon-alpha-lossy/cpus=18        474.9µ ± 1%   473.2µ ± 0%  -0.35% (p=0.009 n=10)
+Decode/img=icon-alpha-lossless/cpus=18     225.5µ ± 0%   224.9µ ± 1%       ~ (p=0.565 n=10)
+Decode/img=noise-lossy/cpus=18             3.441m ± 0%   3.443m ± 0%       ~ (p=0.481 n=10)
+Decode/img=noise-lossless/cpus=18          806.2µ ± 0%   806.2µ ± 0%       ~ (p=0.579 n=10)
+geomean                                    849.7µ        850.3µ       +0.07%
+
+                                         │ ours-before │             ours-after             │
+                                         │   p99-sec   │   p99-sec    vs base               │
+Decode/img=photo-lossy/cpus=18             1.232m ± 1%   1.239m ± 2%       ~ (p=0.280 n=10)
+Decode/img=photo-lossless/cpus=18          1.405m ± 1%   1.404m ± 1%       ~ (p=0.912 n=10)
+Decode/img=flat-lossy/cpus=18              802.9µ ± 2%   787.0µ ± 2%       ~ (p=0.052 n=10)
+Decode/img=flat-lossless/cpus=18           380.9µ ± 0%   382.1µ ± 0%       ~ (p=0.288 n=10)
+Decode/img=lineart-lossy/cpus=18           1.250m ± 1%   1.250m ± 1%       ~ (p=0.739 n=10)
+Decode/img=lineart-lossless/cpus=18        412.3µ ± 2%   410.2µ ± 1%       ~ (p=0.579 n=10)
+Decode/img=gradient-lossy/cpus=18          747.3µ ± 1%   749.3µ ± 0%       ~ (p=0.971 n=10)
+Decode/img=gradient-lossless/cpus=18       610.8µ ± 2%   616.9µ ± 2%       ~ (p=0.239 n=10)
+Decode/img=cutout-alpha-lossy/cpus=18      2.152m ± 1%   2.159m ± 1%       ~ (p=0.165 n=10)
+Decode/img=cutout-alpha-lossless/cpus=18   2.136m ± 1%   2.146m ± 1%       ~ (p=0.089 n=10)
+Decode/img=icon-alpha-lossy/cpus=18        489.7µ ± 1%   490.9µ ± 0%       ~ (p=0.739 n=10)
+Decode/img=icon-alpha-lossless/cpus=18     236.2µ ± 1%   237.1µ ± 1%       ~ (p=0.149 n=10)
+Decode/img=noise-lossy/cpus=18             3.497m ± 1%   3.497m ± 1%       ~ (p=1.000 n=10)
+Decode/img=noise-lossless/cpus=18          819.9µ ± 1%   819.4µ ± 1%       ~ (p=0.853 n=10)
+geomean                                    888.1µ        888.7µ       +0.08%
+
+                                         │ ours-before  │             ours-after              │
+                                         │     B/op     │     B/op      vs base               │
+Decode/img=photo-lossy/cpus=18             384.2Ki ± 0%   384.2Ki ± 0%       ~ (p=0.219 n=10)
+Decode/img=photo-lossless/cpus=18          384.2Ki ± 0%   384.2Ki ± 0%       ~ (p=0.372 n=10)
+Decode/img=flat-lossy/cpus=18              432.2Ki ± 0%   432.2Ki ± 0%       ~ (p=0.496 n=10)
+Decode/img=flat-lossless/cpus=18           432.2Ki ± 0%   432.2Ki ± 0%       ~ (p=1.000 n=10)
+Decode/img=lineart-lossy/cpus=18           432.2Ki ± 0%   432.2Ki ± 0%       ~ (p=0.143 n=10)
+Decode/img=lineart-lossless/cpus=18        432.2Ki ± 0%   432.2Ki ± 0%       ~ (p=0.628 n=10)
+Decode/img=gradient-lossy/cpus=18          328.2Ki ± 0%   328.2Ki ± 0%       ~ (p=0.370 n=10)
+Decode/img=gradient-lossless/cpus=18       328.2Ki ± 0%   328.2Ki ± 0%       ~ (p=0.233 n=10)
+Decode/img=cutout-alpha-lossy/cpus=18      576.2Ki ± 0%   576.2Ki ± 0%       ~ (p=0.194 n=10)
+Decode/img=cutout-alpha-lossless/cpus=18   576.2Ki ± 0%   576.2Ki ± 0%       ~ (p=0.169 n=10)
+Decode/img=icon-alpha-lossy/cpus=18        256.2Ki ± 0%   256.2Ki ± 0%       ~ (p=1.000 n=10)
+Decode/img=icon-alpha-lossless/cpus=18     256.2Ki ± 0%   256.2Ki ± 0%       ~ (p=0.474 n=10)
+Decode/img=noise-lossy/cpus=18             384.2Ki ± 0%   384.2Ki ± 0%       ~ (p=0.915 n=10)
+Decode/img=noise-lossless/cpus=18          384.2Ki ± 0%   384.2Ki ± 0%       ~ (p=0.528 n=10)
+geomean                                    388.5Ki        388.5Ki       +0.00%
+
+                                         │ ours-before │             ours-after              │
+                                         │  allocs/op  │ allocs/op   vs base                 │
+Decode/img=photo-lossy/cpus=18              5.400 ± 0%   5.400 ± 0%       ~ (p=1.000 n=10) ¹
+Decode/img=photo-lossless/cpus=18           5.100 ± 2%   5.100 ± 0%       ~ (p=0.365 n=10)
+Decode/img=flat-lossy/cpus=18               5.200 ± 2%   5.200 ± 0%       ~ (p=0.474 n=10)
+Decode/img=flat-lossless/cpus=18            5.200 ± 0%   5.200 ± 0%       ~ (p=1.000 n=10)
+Decode/img=lineart-lossy/cpus=18            5.200 ± 0%   5.200 ± 0%       ~ (p=1.000 n=10) ¹
+Decode/img=lineart-lossless/cpus=18         5.200 ± 0%   5.200 ± 2%       ~ (p=0.474 n=10)
+Decode/img=gradient-lossy/cpus=18           4.900 ± 0%   4.900 ± 0%       ~ (p=1.000 n=10) ¹
+Decode/img=gradient-lossless/cpus=18        4.900 ± 0%   4.900 ± 0%       ~ (p=1.000 n=10) ¹
+Decode/img=cutout-alpha-lossy/cpus=18       5.400 ± 2%   5.400 ± 2%       ~ (p=1.000 n=10)
+Decode/img=cutout-alpha-lossless/cpus=18    5.400 ± 0%   5.400 ± 0%       ~ (p=1.000 n=10) ¹
+Decode/img=icon-alpha-lossy/cpus=18         4.700 ± 0%   4.700 ± 0%       ~ (p=1.000 n=10) ¹
+Decode/img=icon-alpha-lossless/cpus=18      4.700 ± 0%   4.700 ± 0%       ~ (p=1.000 n=10) ¹
+Decode/img=noise-lossy/cpus=18              5.000 ± 2%   5.100 ± 2%       ~ (p=0.179 n=10)
+Decode/img=noise-lossless/cpus=18           5.000 ± 0%   5.000 ± 0%       ~ (p=1.000 n=10)
+geomean                                     5.088        5.095       +0.14%
+¹ all samples are equal
+
+                                         │   ours-before   │               ours-after               │
+                                         │ gc-pause-sec/op │ gc-pause-sec/op  vs base               │
+Decode/img=photo-lossy/cpus=18                5.206µ ±  5%      5.278µ ± 10%  +1.38% (p=0.043 n=10)
+Decode/img=photo-lossless/cpus=18             3.987µ ± 10%      3.981µ ± 12%       ~ (p=0.739 n=10)
+Decode/img=flat-lossy/cpus=18                 4.470µ ± 10%      4.560µ ±  4%       ~ (p=0.912 n=10)
+Decode/img=flat-lossless/cpus=18              4.258µ ±  4%      4.336µ ±  5%       ~ (p=0.063 n=10)
+Decode/img=lineart-lossy/cpus=18              4.419µ ±  3%      4.477µ ±  3%       ~ (p=0.363 n=10)
+Decode/img=lineart-lossless/cpus=18           4.288µ ±  5%      4.364µ ±  4%       ~ (p=0.218 n=10)
+Decode/img=gradient-lossy/cpus=18             3.425µ ±  2%      3.495µ ±  3%       ~ (p=0.060 n=10)
+Decode/img=gradient-lossless/cpus=18          3.410µ ±  3%      3.515µ ± 10%       ~ (p=0.271 n=10)
+Decode/img=cutout-alpha-lossy/cpus=18         5.031µ ±  6%      4.998µ ±  5%       ~ (p=0.853 n=10)
+Decode/img=cutout-alpha-lossless/cpus=18      4.883µ ± 19%      5.056µ ± 21%       ~ (p=0.105 n=10)
+Decode/img=icon-alpha-lossy/cpus=18           2.606µ ±  8%      2.610µ ±  3%       ~ (p=0.912 n=10)
+Decode/img=icon-alpha-lossless/cpus=18        2.522µ ±  6%      2.595µ ±  2%       ~ (p=0.085 n=10)
+Decode/img=noise-lossy/cpus=18                4.127µ ± 34%      4.050µ ±  9%       ~ (p=0.739 n=10)
+Decode/img=noise-lossless/cpus=18             3.723µ ±  2%      3.871µ ±  8%  +3.98% (p=0.007 n=10)
+geomean                                       3.939µ            3.999µ        +1.51%
