@@ -342,8 +342,9 @@ type encScore struct {
 type decScore struct {
 	Impl  string `json:"impl"`
 	Image string `json:"image"`
-	// Difference from libwebp's dwebp: the largest per-channel difference, the mean absolute
-	// difference, and the PSNR (99 when identical).
+	// Difference from libwebp's dwebp in the colors a viewer sees (premultiplied, 8-bit units):
+	// the largest per-channel difference, the mean absolute difference, and the PSNR (99 when
+	// identical).
 	MaxDiff  int     `json:"max_diff"`
 	MeanDiff float64 `json:"mean_diff"`
 	PSNR     float64 `json:"psnr"`
@@ -414,43 +415,39 @@ func scoreDecoder(name string, jobs []job, dwebp string) {
 		if err != nil {
 			s.Err = err.Error()
 		} else {
-			s.MaxDiff, s.MeanDiff, s.PSNR = pixelDiff(ref, toNRGBA(m))
+			s.MaxDiff, s.MeanDiff, s.PSNR = colorDiff(ref, m)
 		}
 		must(json.NewEncoder(os.Stdout).Encode(s))
 	}
 }
 
-// toNRGBA converts m with Go's standard color conversion, as a user of the decoder gets it.
-func toNRGBA(m image.Image) *image.NRGBA {
-	if n, ok := m.(*image.NRGBA); ok {
-		return n
-	}
+// colorDiff compares what a viewer sees: the colors as image.Image.At gives them
+// (premultiplied, 16 bits), in 8-bit units, so that the RGB a decoder leaves under fully
+// transparent pixels (meaningless) does not count, and premultiplied and YCbCr results are
+// compared on the same footing as non-premultiplied ones.
+func colorDiff(ref *image.NRGBA, m image.Image) (maxDiff int, mean, psnr float64) {
 	b := m.Bounds()
-	n := image.NewNRGBA(image.Rect(0, 0, b.Dx(), b.Dy()))
-	for y := 0; y < b.Dy(); y++ {
-		for x := 0; x < b.Dx(); x++ {
-			n.Set(x, y, m.At(b.Min.X+x, b.Min.Y+y))
-		}
-	}
-	return n
-}
-
-func pixelDiff(a, b *image.NRGBA) (maxDiff int, mean, psnr float64) {
-	if a.Rect.Size() != b.Rect.Size() {
+	if b.Size() != ref.Rect.Size() {
 		return 255, 255, 0
 	}
 	var se, sum float64
-	for i := range a.Pix {
-		d := int(a.Pix[i]) - int(b.Pix[i])
-		if d < 0 {
-			d = -d
+	n := 0
+	for y := 0; y < b.Dy(); y++ {
+		for x := 0; x < b.Dx(); x++ {
+			r0, g0, b0, a0 := ref.At(x, y).RGBA()
+			r1, g1, b1, a1 := m.At(b.Min.X+x, b.Min.Y+y).RGBA()
+			for _, d := range [4]float64{
+				float64(r0) - float64(r1), float64(g0) - float64(g1), float64(b0) - float64(b1), float64(a0) - float64(a1),
+			} {
+				d = math.Abs(d) / 257
+				maxDiff = max(maxDiff, int(math.Round(d)))
+				sum += d
+				se += d * d
+				n++
+			}
 		}
-		maxDiff = max(maxDiff, d)
-		sum += float64(d)
-		se += float64(d * d)
 	}
-	n := float64(len(a.Pix))
-	return maxDiff, sum / n, psnrOf(se / n)
+	return maxDiff, sum / float64(n), psnrOf(se / float64(n))
 }
 
 func psnrOf(mse float64) float64 {

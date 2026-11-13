@@ -291,9 +291,9 @@ func main() {
 		sort.SliceStable(dm, func(i, j int) bool {
 			return perImpl(lat, "Decode", dm[i], cpuList[0], "ns/op", dImgs) < perImpl(lat, "Decode", dm[j], cpuList[0], "ns/op", dImgs)
 		})
-		fmt.Printf("### Decode\n\nThe %d inputs are the thumbnails encoded by libwebp's cwebp, lossy (q80 m4) and lossless. Agreement with dwebp: the largest per-channel difference from libwebp's own decoding over all inputs, and the mean PSNR against it on the lossy ones (99: identical).\n\n", len(dImgs))
-		fmt.Printf("| implementation | %s | %s | p50 / p95 / p99 ms | alloc KB/op | GC pause µs/op | max diff vs dwebp | lossy PSNR vs dwebp | errors |\n", cpuHdr("ms/image (%d CPUs)"), strings.TrimSuffix(strings.Repeat("× C | ", len(cpuList)), " | "))
-		fmt.Printf("|---|%s%s%s\n", align(2*len(cpuList)), align(3), align(3))
+		fmt.Printf("### Decode\n\nThe %d inputs are the thumbnails encoded by libwebp's cwebp, lossy (q80 m4) and lossless. Agreement with dwebp, in the colors a viewer sees (premultiplied, so the RGB under fully transparent pixels does not count): the largest per-channel difference from libwebp's own decoding over all inputs, and the mean PSNR against it on the opaque lossy inputs and on the lossy inputs with alpha (99: identical).\n\n", len(dImgs))
+		fmt.Printf("| implementation | %s | %s | p50 / p95 / p99 ms | alloc KB/op | GC pause µs/op | max diff vs dwebp | PSNR vs dwebp, opaque lossy | PSNR vs dwebp, lossy with alpha | errors |\n", cpuHdr("ms/image (%d CPUs)"), strings.TrimSuffix(strings.Repeat("× C | ", len(cpuList)), " | "))
+		fmt.Printf("|---|%s%s%s\n", align(2*len(cpuList)), align(3), align(4))
 		for _, impl := range dm {
 			var t, r []string
 			for _, c := range cpuList {
@@ -302,28 +302,36 @@ func main() {
 				r = append(r, ratio(v, perImpl(lat, "Decode", "c-libwebp", c, "ns/op", dImgs)))
 			}
 			maxd, errs := 0, 0
-			var psnr float64
-			n := 0
+			var psO, psA float64
+			nO, nA := 0, 0
 			for _, s := range dq[impl] {
 				if s.Err != "" {
 					errs++
 					continue
 				}
 				maxd = max(maxd, s.MaxDiff)
-				if strings.HasSuffix(s.Image, "-lossy") {
-					psnr += s.PSNR
-					n++
+				switch {
+				case strings.HasSuffix(s.Image, "-alpha-lossy"):
+					psA += s.PSNR
+					nA++
+				case strings.HasSuffix(s.Image, "-lossy"):
+					psO += s.PSNR
+					nO++
 				}
 			}
-			md, ps := "–", "–"
+			md, po, pa := "–", "–", "–"
 			if impl == "c-libwebp" {
-				md, ps = "0 (it is dwebp's decoder)", "99"
+				md, po, pa = "0 (it is dwebp's decoder)", "99", "99"
 			} else if len(dq[impl]) > 0 {
 				md = strconv.Itoa(maxd)
-				if n > 0 {
-					ps = fmt.Sprintf("%.2f", psnr/float64(n))
+				if nO > 0 {
+					po = fmt.Sprintf("%.2f", psO/float64(nO))
+				}
+				if nA > 0 {
+					pa = fmt.Sprintf("%.2f", psA/float64(nA))
 				}
 			}
+			ps := po + " | " + pa
 			fmt.Printf("| %s | %s | %s | %s | %s | %s | %s | %s | %d |\n", impl, strings.Join(t, " | "), strings.Join(r, " | "),
 				fmt.Sprintf("%s / %s / %s", ms(perImpl(lat, "Decode", impl, cpuList[0], "p50-ns", dImgs)),
 					ms(perImpl(lat, "Decode", impl, cpuList[0], "p95-ns", dImgs)), ms(perImpl(lat, "Decode", impl, cpuList[0], "p99-ns", dImgs))),

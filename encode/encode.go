@@ -9,6 +9,7 @@ import (
 	"image/draw"
 	"io"
 
+	"github.com/jotadrilo/webp/internal/pool"
 	"github.com/jotadrilo/webp/internal/werr"
 )
 
@@ -235,7 +236,11 @@ func reserve(i *instance, wd, ht int, lossless bool) {
 		// references, histograms) plus ~24 MB that does not depend on the size.
 		need = px*32 + 24<<20
 	}
-	if need <= 4<<20 || len(i.m.Mem()) >= need {
+	// Only for encodes too large for a pooled module (which is then discarded): reserving for
+	// small ones would make every pooled module as large as the estimate, which overshoots
+	// (the soak measured 300 MB retained after a burst), while their step-by-step growth is
+	// cheap anyway.
+	if need <= pool.MaxMemory || len(i.m.Mem()) >= need {
 		return
 	}
 	if p := i.m.Xmalloc(int32(need)); p != 0 {

@@ -42,14 +42,21 @@ bin=$work/bin
 mkdir -p "$out" "$bin"
 has() { [[ " $PHASES " == *" $1 "* ]]; }
 
-# Priority: never a QoS clamp (taskpolicy -c only lowers it: utility, background, maintenance),
-# so macOS keeps the processes on performance cores like any foreground work; nice -5 when
-# permitted (it needs root).
+# Priority: never a QoS clamp (taskpolicy -c can only lower it: utility, background,
+# maintenance), so macOS keeps the processes on performance cores like any foreground work.
+# On macOS they also get the highest I/O and latency tiers (taskpolicy -t 0 -l 0), and nice -5
+# when permitted (it needs root).
 if [[ -z ${BENCH_PRIORITY:-} ]]; then
-  if nice -n -5 true 2>/dev/null && [[ $(nice -n -5 nice) == -5 ]]; then
-    BENCH_PRIORITY="nice -5, no QoS clamp" exec nice -n -5 "$0" "$@"
+  prefix=()
+  if [[ $(nice -n -5 sh -c 'ps -o nice= -p $$' 2>/dev/null | tr -d ' ') == -5 ]]; then
+    prefix+=(nice -n -5)
   fi
-  export BENCH_PRIORITY="nice $(nice) (nice -5 needs root), no QoS clamp"
+  if [[ $(uname -s) == Darwin ]]; then
+    prefix+=(taskpolicy -t 0 -l 0)
+  fi
+  BENCH_PRIORITY="nice $(ps -o nice= -p $$ | tr -d ' ')$([[ " ${prefix[*]-} " == *" nice "* ]] && echo ' -> -5' || echo ' (nice -5 needs root)'), no QoS clamp$([[ $(uname -s) == Darwin ]] && echo ', taskpolicy -t 0 -l 0')"
+  export BENCH_PRIORITY
+  if ((${#prefix[@]})); then exec "${prefix[@]}" "$0" "$@"; fi
 fi
 
 locked() {
@@ -175,10 +182,14 @@ fi
 if has report; then
   # benchstat (if installed) for confidence intervals and significance, C as the base column.
   if command -v benchstat >/dev/null; then
-    grep -E '^BenchmarkEncode/' "$out/latency.txt" > "$work/enc.txt" || true
-    grep -E '^BenchmarkDecode/' "$out/latency.txt" > "$work/dec.txt" || true
-    benchstat -col /impl -filter '.unit:sec/op' "$work/enc.txt" > "$out/benchstat-encode.txt" 2>&1 || true
-    benchstat -col /impl -filter '.unit:sec/op' "$work/dec.txt" > "$out/benchstat-decode.txt" 2>&1 || true
+    # One table per comparable setting, native C as the base column (the first in each file).
+    for g in m0 m4 lossless; do
+      grep -E "^BenchmarkEncode/impl=c-libwebp-$g/" "$out/latency.txt" > "$work/bs-$g.txt" || true
+      grep -E "^BenchmarkEncode/impl=[^/]*-$g/" "$out/latency.txt" | grep -v "impl=c-libwebp" >> "$work/bs-$g.txt" || true
+      benchstat -col /impl -filter '.unit:(sec/op OR p99-ns OR B/op)' "$work/bs-$g.txt" > "$out/benchstat-encode-$g.txt" 2>&1 || true
+    done
+    { grep -E '^BenchmarkDecode/impl=c-libwebp/' "$out/latency.txt"; grep -E '^BenchmarkDecode/' "$out/latency.txt" | grep -v 'impl=c-libwebp'; } > "$work/bs-dec.txt" || true
+    benchstat -col /impl -filter '.unit:(sec/op OR p99-ns OR B/op)' "$work/bs-dec.txt" > "$out/benchstat-decode.txt" 2>&1 || true
     benchstat -col /impl "$out/throughput.txt" > "$out/benchstat-throughput.txt" 2>&1 || true
   fi
   "$bin/report" "$out" > "$out/report.md"
