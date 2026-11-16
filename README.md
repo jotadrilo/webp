@@ -93,7 +93,7 @@ Everything that goes into `internal/gen/*/libwebp.go` is pinned in
 - the official libwebp release tarball, by URL and SHA-256 (`scripts/fetch-libwebp.sh` checks it
   and unpacks it into `third_party/libwebp/_src`; only its license files are committed),
 - wasi-sdk 34, by SHA-256 for each host platform,
-- wasm2go v0.4.21 (checked by the Go checksum database),
+- wasm2go v0.4.22 (checked by the Go checksum database),
 - the compiler and translator flags, and the two small C entry points in
   [`internal/gen/csrc`](internal/gen/csrc), which only call libwebp's public API.
 
